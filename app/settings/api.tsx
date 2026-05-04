@@ -85,7 +85,7 @@ export default function ApiSettingsScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>🌤️ 天气信息</Text>
         <Text style={styles.description}>
-          天气数据由 Open-Meteo 免费 API 提供，无需配置，自动根据 GPS 位置获取实时天气。
+          天气数据由高德天气 API 提供，无需配置，自动根据 GPS 位置获取实时天气和预报。
         </Text>
       </View>
 

@@ -18,6 +18,8 @@ export default function RootLayout() {
         <Stack.Screen name="catch/[id]" options={{ title: '钓获详情' }} />
         <Stack.Screen name="identify" options={{ title: 'AI 识别' }} />
         <Stack.Screen name="settings/api" options={{ title: 'API 配置' }} />
+        <Stack.Screen name="settings/units" options={{ title: '单位偏好' }} />
+        <Stack.Screen name="settings/about" options={{ title: '关于' }} />
       </Stack>
     </>
   );

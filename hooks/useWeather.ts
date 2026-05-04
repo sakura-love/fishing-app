@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import * as Location from 'expo-location';
 import { WeatherDay } from '../services/types';
-import { getWeather } from '../services/weather';
+import { getWeather, getCityName } from '../services/weather';
 
 interface UseWeatherResult {
   weather: WeatherDay[];
@@ -52,12 +52,10 @@ export function useWeather(): UseWeatherResult {
       const { latitude, longitude } = location.coords;
       lastLocation.current = { lat: latitude, lon: longitude };
 
-      // 获取地名
+      // 获取地名（使用高德地理编码，比系统自带更准确）
       try {
-        const [place] = await Location.reverseGeocodeAsync({ latitude, longitude });
-        if (place) {
-          setLocationName(place.city || place.region || '未知位置');
-        }
+        const city = await getCityName(latitude, longitude);
+        setLocationName(city);
       } catch {
         setLocationName('未知位置');
       }

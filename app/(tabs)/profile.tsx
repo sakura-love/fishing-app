@@ -89,11 +89,17 @@ export default function ProfileScreen() {
           <Text style={styles.menuText}>API 配置</Text>
           <Text style={styles.menuArrow}>›</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.menuItem}>
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => router.push('/settings/units')}
+        >
           <Text style={styles.menuText}>单位偏好</Text>
           <Text style={styles.menuArrow}>›</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.menuItem}>
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => router.push('/settings/about')}
+        >
           <Text style={styles.menuText}>关于</Text>
           <Text style={styles.menuArrow}>›</Text>
         </TouchableOpacity>
