@@ -1,4 +1,4 @@
-import { readAsStringAsync } from 'expo-file-system';
+import { readAsStringAsync, copyAsync, cacheDirectory } from 'expo-file-system/legacy';
 import { getSetting } from './storage';
 import { fishEncyclopedia, FishSpecies } from '../data/fish-encyclopedia';
 import { IdentifyResult } from './types';
@@ -17,16 +17,25 @@ export async function identifyFish(imageUri: string): Promise<IdentifyResult> {
   try {
     // 读取图片并转为 base64
     console.log('[Fish Recognition] Reading image:', imageUri);
-    const base64 = await readAsStringAsync(imageUri, {
-      encoding: 'base64',
-    });
+    let base64: string;
+    try {
+      // 优先尝试新版 API
+      base64 = await readAsStringAsync(imageUri, { encoding: 'base64' });
+    } catch (fileError) {
+      console.warn('[Fish Recognition] readAsStringAsync failed, trying copy + read:', fileError);
+      // 如果失败，先复制到缓存目录再读取
+      const fileName = `identify_${Date.now()}.jpg`;
+      const destPath = `${cacheDirectory}${fileName}`;
+      await copyAsync({ from: imageUri, to: destPath });
+      base64 = await readAsStringAsync(destPath, { encoding: 'base64' });
+    }
     console.log('[Fish Recognition] Image read success, base64 length:', base64.length);
 
     // 构建鱼种列表用于提示
     const fishList = fishEncyclopedia.map((f) => `${f.name}(${f.scientificName})`).join('、');
 
     console.log('[Fish Recognition] Sending request to Zhipu API...');
-    const response = await fetch(ZHIPU_API, {
+    const apiResponse = await fetch(ZHIPU_API, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -61,15 +70,15 @@ export async function identifyFish(imageUri: string): Promise<IdentifyResult> {
       }),
     });
 
-    console.log('[Fish Recognition] Response status:', response.status);
+    console.log('[Fish Recognition] Response status:', apiResponse.status);
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[Fish Recognition] API error:', response.status, errorText);
-      throw new Error(`API returned ${response.status}: ${errorText.substring(0, 200)}`);
+    if (!apiResponse.ok) {
+      const errorText = await apiResponse.text();
+      console.error('[Fish Recognition] API error:', apiResponse.status, errorText);
+      throw new Error(`API returned ${apiResponse.status}: ${errorText.substring(0, 200)}`);
     }
 
-    const data = await response.json();
+    const data = await apiResponse.json();
     console.log('[Fish Recognition] Response data keys:', Object.keys(data));
 
     if (data.choices && data.choices[0]) {
