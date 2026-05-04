@@ -1,0 +1,54 @@
+{
+  "expo": {
+    "name": "钓鱼人宝典",
+    "slug": "fishing-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "scheme": "fishing-app",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1a5276"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.fishing.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1a5276"
+      },
+      "edgeToEdgeEnabled": true,
+      "package": "com.fishing.app"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "允许钓鱼人宝典获取您的位置以提供天气和水温信息"
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "允许钓鱼人宝典使用相机拍摄钓到的鱼"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "允许钓鱼人宝典访问相册选择鱼的照片"
+        }
+      ]
+    ]
+  }
+}
