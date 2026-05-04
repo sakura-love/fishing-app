@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Image } from 'react-native';
 import { CatchRecord } from '../services/types';
 import { getFishById } from '../data/fish-encyclopedia';
 
@@ -21,8 +21,12 @@ export function ShareCard({ record, stats }: ShareCardProps) {
         <Text style={styles.appName}>🎣 钓鱼人宝典</Text>
       </View>
 
+      {record.photoUri && (
+        <Image source={{ uri: record.photoUri }} style={styles.photo} resizeMode="cover" />
+      )}
+
       <View style={styles.content}>
-        <Text style={styles.fishEmoji}>🐟</Text>
+        {!record.photoUri && <Text style={styles.fishEmoji}>🐟</Text>}
         <Text style={styles.fishName}>{record.fishName}</Text>
         {fish && (
           <Text style={styles.scientificName}>{fish.scientificName}</Text>
@@ -84,6 +88,10 @@ const styles = StyleSheet.create({
   },
   appName: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
   content: { padding: 24, alignItems: 'center' },
+  photo: {
+    width: '100%',
+    height: 200,
+  },
   fishEmoji: { fontSize: 64 },
   fishName: { fontSize: 28, fontWeight: 'bold', color: '#2c3e50', marginTop: 12 },
   scientificName: { fontSize: 14, color: '#95a5a6', fontStyle: 'italic', marginTop: 4 },

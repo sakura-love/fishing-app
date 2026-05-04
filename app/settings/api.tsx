@@ -7,6 +7,7 @@ export default function ApiSettingsScreen() {
   const router = useRouter();
   const [zhipuKey, setZhipuKey] = useState('');
   const [saving, setSaving] = useState(false);
+  const [showKey, setShowKey] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -15,6 +16,14 @@ export default function ApiSettingsScreen() {
   const loadSettings = async () => {
     const zhipu = await getSetting('zhipu_api_key');
     if (zhipu) setZhipuKey(zhipu);
+    const hideState = await getSetting('api_key_hidden');
+    setShowKey(hideState !== 'true');
+  };
+
+  const handleToggleShow = async () => {
+    const newShowState = !showKey;
+    setShowKey(newShowState);
+    await setSetting('api_key_hidden', newShowState ? 'false' : 'true');
   };
 
   const handleSave = async () => {
@@ -47,14 +56,20 @@ export default function ApiSettingsScreen() {
         <Text style={styles.description}>
           用于 AI 鱼类识别（GLM-4V-Flash 免费模型）。免费注册：open.bigmodel.cn
         </Text>
-        <TextInput
-          style={styles.input}
-          placeholder="输入智谱 AI API Key"
-          value={zhipuKey}
-          onChangeText={setZhipuKey}
-          placeholderTextColor="#ccc"
-          autoCapitalize="none"
-        />
+        <View style={styles.inputRow}>
+          <TextInput
+            style={styles.input}
+            placeholder="输入智谱 AI API Key"
+            value={zhipuKey}
+            onChangeText={setZhipuKey}
+            placeholderTextColor="#ccc"
+            autoCapitalize="none"
+            secureTextEntry={!showKey}
+          />
+          <TouchableOpacity style={styles.eyeBtn} onPress={handleToggleShow}>
+            <Text style={styles.eyeIcon}>{showKey ? '🙈' : '👁️'}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.infoSection}>
@@ -82,7 +97,12 @@ const styles = StyleSheet.create({
   section: { padding: 16 },
   sectionTitle: { fontSize: 18, fontWeight: '600', color: '#2c3e50', marginBottom: 8 },
   description: { fontSize: 14, color: '#95a5a6', marginBottom: 12, lineHeight: 20 },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   input: {
+    flex: 1,
     backgroundColor: '#fff',
     borderRadius: 10,
     padding: 14,
@@ -93,6 +113,18 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 2,
   },
+  eyeBtn: {
+    marginLeft: 8,
+    padding: 12,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  eyeIcon: { fontSize: 20 },
   infoSection: {
     padding: 16,
     backgroundColor: '#eaf2f8',

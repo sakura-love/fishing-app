@@ -1,4 +1,4 @@
-import { File } from 'expo-file-system';
+import { readAsStringAsync } from 'expo-file-system';
 import { getSetting } from './storage';
 import { fishEncyclopedia, FishSpecies } from '../data/fish-encyclopedia';
 import { IdentifyResult } from './types';
@@ -15,14 +15,9 @@ export async function identifyFish(imageUri: string): Promise<IdentifyResult> {
 
   try {
     // 读取图片并转为 base64
-    const file = new File(imageUri);
-    const arrayBuffer = await file.arrayBuffer();
-    const bytes = new Uint8Array(arrayBuffer);
-    let binary = '';
-    for (let i = 0; i < bytes.length; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    const base64 = btoa(binary);
+    const base64 = await readAsStringAsync(imageUri, {
+      encoding: 'base64',
+    });
 
     // 构建鱼种列表用于提示
     const fishList = fishEncyclopedia.map((f) => `${f.name}(${f.scientificName})`).join('、');

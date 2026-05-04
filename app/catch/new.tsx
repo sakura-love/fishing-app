@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Modal, FlatList } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Modal, FlatList, Image } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -126,7 +126,7 @@ export default function NewCatchScreen() {
         </View>
         {photoUri && (
           <View style={styles.photoPreview}>
-            <Text style={styles.photoPreviewText}>已选择照片</Text>
+            <Image source={{ uri: photoUri }} style={styles.photoPreviewImage} resizeMode="cover" />
           </View>
         )}
       </View>
@@ -274,12 +274,15 @@ const styles = StyleSheet.create({
   photoText: { fontSize: 14, color: '#95a5a6', marginTop: 8 },
   photoPreview: {
     marginTop: 8,
-    backgroundColor: '#d5f5e3',
     borderRadius: 10,
-    padding: 12,
+    overflow: 'hidden',
     alignItems: 'center',
   },
-  photoPreviewText: { fontSize: 14, color: '#27ae60' },
+  photoPreviewImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 10,
+  },
   row: { flexDirection: 'row', gap: 8 },
   input: {
     backgroundColor: '#fff',

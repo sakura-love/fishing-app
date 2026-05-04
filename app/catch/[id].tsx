@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useEffect, useRef } from 'react';
 import { captureRef } from 'react-native-view-shot';
@@ -76,8 +76,14 @@ export default function CatchDetailScreen() {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.imagePlaceholder}>
-        <Text style={styles.fishEmoji}>🐟</Text>
-        <Text style={styles.fishName}>{record.fishName}</Text>
+        {record.photoUri ? (
+          <Image source={{ uri: record.photoUri }} style={styles.fishPhoto} resizeMode="cover" />
+        ) : (
+          <>
+            <Text style={styles.fishEmoji}>🐟</Text>
+            <Text style={styles.fishName}>{record.fishName}</Text>
+          </>
+        )}
       </View>
 
       <View style={styles.infoCard}>
@@ -138,9 +144,13 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f8fa' },
   imagePlaceholder: {
     backgroundColor: '#1a5276',
-    height: 200,
+    height: 250,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  fishPhoto: {
+    width: '100%',
+    height: 250,
   },
   fishEmoji: { fontSize: 64 },
   fishName: { fontSize: 24, fontWeight: 'bold', color: '#fff', marginTop: 8 },
