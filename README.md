@@ -61,17 +61,15 @@
 
 <!-- 请在截图后替换以下占位图 -->
 
-| 首页 | 鱼种图鉴 | 钓获记录 | AI 识别 |
+| 首页 | 鱼种图鉴 | 钓获记录 | 钓获详情 |
 |:---:|:---:|:---:|:---:|
-| ![首页](screenshots/home.png) | ![鱼种图鉴](screenshots/encyclopedia.png) | ![钓获记录](screenshots/records.png) | ![AI 识别](screenshots/identify.png) |
+| ![首页](screenshots/home.png) | ![鱼种图鉴](screenshots/encyclopedia.png) | ![钓获记录](screenshots/records.png) | ![钓获详情](screenshots/catch-detail.png) |
 
-### 📤 社交分享
+### 🤖 AI 智能识别
 
-| 钓获详情页 |
-|:---:|
-| ![钓获详情](screenshots/catch-detail.png) |
+![AI 识别](screenshots/identify.png)
 
-> 一键生成精美分享卡片，分享到社交平台（功能开发中）
+> 📌 截图持续更新中
 
 </div>
 
