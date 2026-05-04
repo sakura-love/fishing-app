@@ -2,37 +2,40 @@ import * as SQLite from 'expo-sqlite';
 import { CatchRecord } from './types';
 
 let db: SQLite.SQLiteDatabase | null = null;
+let initPromise: Promise<void> | null = null;
 
 export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
   if (db) return db;
-  db = await SQLite.openDatabaseAsync('fishing-app.db');
-  await initDatabase(db);
-  return db;
-}
+  if (!initPromise) {
+    initPromise = (async () => {
+      const database = await SQLite.openDatabaseAsync('fishing-app.db');
+      await database.execAsync(`
+        CREATE TABLE IF NOT EXISTS catch_records (
+          id TEXT PRIMARY KEY,
+          fishSpeciesId TEXT NOT NULL,
+          fishName TEXT NOT NULL,
+          photoUri TEXT,
+          length REAL,
+          weight REAL,
+          location TEXT,
+          latitude REAL,
+          longitude REAL,
+          caughtAt TEXT NOT NULL,
+          notes TEXT,
+          identifiedBy TEXT DEFAULT 'manual',
+          createdAt TEXT DEFAULT (datetime('now'))
+        );
 
-async function initDatabase(database: SQLite.SQLiteDatabase) {
-  await database.execAsync(`
-    CREATE TABLE IF NOT EXISTS catch_records (
-      id TEXT PRIMARY KEY,
-      fishSpeciesId TEXT NOT NULL,
-      fishName TEXT NOT NULL,
-      photoUri TEXT,
-      length REAL,
-      weight REAL,
-      location TEXT,
-      latitude REAL,
-      longitude REAL,
-      caughtAt TEXT NOT NULL,
-      notes TEXT,
-      identifiedBy TEXT DEFAULT 'manual',
-      createdAt TEXT DEFAULT (datetime('now'))
-    );
-
-    CREATE TABLE IF NOT EXISTS settings (
-      key TEXT PRIMARY KEY,
-      value TEXT NOT NULL
-    );
-  `);
+        CREATE TABLE IF NOT EXISTS settings (
+          key TEXT PRIMARY KEY,
+          value TEXT NOT NULL
+        );
+      `);
+      db = database;
+    })();
+  }
+  await initPromise;
+  return db!;
 }
 
 export async function insertCatchRecord(record: CatchRecord): Promise<void> {
@@ -124,20 +127,50 @@ export async function getFishCatchCounts(): Promise<Record<string, number>> {
 }
 
 export async function getSetting(key: string): Promise<string | null> {
-  const database = await getDatabase();
-  const row = await database.getFirstAsync<any>(
-    'SELECT value FROM settings WHERE key = ?',
-    [key]
-  );
-  return row?.value || null;
+  try {
+    const database = await getDatabase();
+    const row = await database.getFirstAsync<{ value: string }>(
+      'SELECT value FROM settings WHERE key = ?',
+      [key]
+    );
+    return row?.value ?? null;
+  } catch (error) {
+    console.error(`getSetting(${key}) error:`, error);
+    return null;
+  }
 }
 
-export async function setSetting(key: string, value: string): Promise<void> {
-  const database = await getDatabase();
-  await database.runAsync(
-    'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)',
-    [key, value]
-  );
+export async function setSetting(key: string, value: string): Promise<boolean> {
+  try {
+    const database = await getDatabase();
+    await database.runAsync(
+      'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)',
+      [key, value]
+    );
+    // 验证写入成功
+    const verify = await getSetting(key);
+    return verify === value;
+  } catch (error) {
+    console.error(`setSetting(${key}) error:`, error);
+    return false;
+  }
+}
+
+export async function getAllSettings(): Promise<Record<string, string>> {
+  try {
+    const database = await getDatabase();
+    const rows = await database.getAllAsync<{ key: string; value: string }>(
+      'SELECT key, value FROM settings'
+    );
+    const settings: Record<string, string> = {};
+    for (const row of rows) {
+      settings[row.key] = row.value;
+    }
+    return settings;
+  } catch (error) {
+    console.error('getAllSettings error:', error);
+    return {};
+  }
 }
 
 function mapRowToCatchRecord(row: any): CatchRecord {

@@ -1,9 +1,10 @@
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
-import { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Image } from 'react-native';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { identifyFish } from '../services/fish-recognition';
 import { IdentifyResult } from '../services/types';
+import { getSetting } from '../services/storage';
 
 type IdentifyState = 'idle' | 'loading' | 'result';
 
@@ -12,6 +13,17 @@ export default function IdentifyScreen() {
   const [state, setState] = useState<IdentifyState>('idle');
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [result, setResult] = useState<IdentifyResult | null>(null);
+  const [hasApiKey, setHasApiKey] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    checkApiKey();
+  }, []);
+
+  const checkApiKey = async () => {
+    const key = await getSetting('zhipu_api_key');
+    console.log('[Identify] API Key check:', key ? 'found' : 'not found');
+    setHasApiKey(!!key && key.length > 0);
+  };
 
   const handleTakePhoto = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -47,12 +59,40 @@ export default function IdentifyScreen() {
     }
   };
 
+  const showApiKeyAlert = () => {
+    Alert.alert(
+      '🔑 需要配置 API',
+      'AI 鱼类识别功能需要智谱 AI 的 API Key。\n\n请前往「我的 → API 配置」添加您的智谱 AI Key。\n\n免费注册：open.bigmodel.cn',
+      [
+        { text: '去配置', onPress: () => router.push('/settings/api') },
+        { text: '取消', style: 'cancel' },
+      ]
+    );
+  };
+
+  const handlePressTakePhoto = () => {
+    if (!hasApiKey) {
+      showApiKeyAlert();
+      return;
+    }
+    handleTakePhoto();
+  };
+
+  const handlePressPickPhoto = () => {
+    if (!hasApiKey) {
+      showApiKeyAlert();
+      return;
+    }
+    handlePickPhoto();
+  };
+
   const processImage = async (uri: string) => {
     setPhotoUri(uri);
     setState('loading');
 
     try {
       const identifyResult = await identifyFish(uri);
+      console.log('[Identify] Result:', identifyResult);
       setResult(identifyResult);
       setState('result');
     } catch (error) {
@@ -75,6 +115,7 @@ export default function IdentifyScreen() {
     setState('idle');
     setResult(null);
     setPhotoUri(null);
+    checkApiKey();
   };
 
   return (
@@ -84,18 +125,38 @@ export default function IdentifyScreen() {
           <Text style={styles.icon}>📷</Text>
           <Text style={styles.title}>AI 鱼类识别</Text>
           <Text style={styles.subtitle}>拍摄鱼的照片，自动识别鱼种</Text>
-          <TouchableOpacity style={styles.btn} onPress={handleTakePhoto}>
-            <Text style={styles.btnText}>拍照识别</Text>
+          
+          {!hasApiKey && hasApiKey !== null && (
+            <View style={styles.warningBox}>
+              <Text style={styles.warningIcon}>⚠️</Text>
+              <Text style={styles.warningText}>
+                未配置智谱 AI API Key{'\n'}
+                请先前往「我的 → API 配置」添加
+              </Text>
+              <TouchableOpacity
+                style={styles.configBtn}
+                onPress={() => router.push('/settings/api')}
+              >
+                <Text style={styles.configBtnText}>去配置</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          <TouchableOpacity style={[styles.btn, !hasApiKey && styles.btnDisabled]} onPress={handlePressTakePhoto}>
+            <Text style={styles.btnText}>📷 拍照识别</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.secondaryBtn} onPress={handlePickPhoto}>
-            <Text style={styles.secondaryBtnText}>从相册选择</Text>
+          <TouchableOpacity style={[styles.secondaryBtn, !hasApiKey && styles.btnDisabled]} onPress={handlePressPickPhoto}>
+            <Text style={[styles.secondaryBtnText, !hasApiKey && styles.secondaryBtnTextDisabled]}>🖼️ 从相册选择</Text>
           </TouchableOpacity>
         </View>
       )}
 
       {state === 'loading' && (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#1a5276" />
+          {photoUri && (
+            <Image source={{ uri: photoUri }} style={styles.loadingPhoto} resizeMode="contain" />
+          )}
+          <ActivityIndicator size="large" color="#1a5276" style={{ marginTop: 20 }} />
           <Text style={styles.loadingText}>AI 识别中...</Text>
           <Text style={styles.loadingSubtext}>正在分析鱼的特征</Text>
         </View>
@@ -103,6 +164,9 @@ export default function IdentifyScreen() {
 
       {state === 'result' && result && (
         <View style={styles.resultContainer}>
+          {photoUri && (
+            <Image source={{ uri: photoUri }} style={styles.resultPhoto} resizeMode="contain" />
+          )}
           <View style={styles.resultCard}>
             <Text style={styles.resultIcon}>🐟</Text>
             <Text style={styles.resultName}>{result.name}</Text>
@@ -146,6 +210,32 @@ const styles = StyleSheet.create({
   icon: { fontSize: 80 },
   title: { fontSize: 24, fontWeight: 'bold', color: '#2c3e50', marginTop: 20 },
   subtitle: { fontSize: 16, color: '#95a5a6', marginTop: 8, textAlign: 'center' },
+  warningBox: {
+    backgroundColor: '#fef9e7',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 24,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#f9e79f',
+    width: '100%',
+  },
+  warningIcon: { fontSize: 32 },
+  warningText: {
+    fontSize: 14,
+    color: '#7d6608',
+    textAlign: 'center',
+    marginTop: 8,
+    lineHeight: 20,
+  },
+  configBtn: {
+    marginTop: 12,
+    backgroundColor: '#f39c12',
+    paddingHorizontal: 24,
+    paddingVertical: 8,
+    borderRadius: 16,
+  },
+  configBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
   btn: {
     marginTop: 32,
     backgroundColor: '#1a5276',
@@ -153,12 +243,25 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 24,
   },
+  btnDisabled: { opacity: 0.5 },
   btnText: { color: '#fff', fontSize: 17, fontWeight: '600' },
   secondaryBtn: { marginTop: 16, padding: 12 },
   secondaryBtnText: { color: '#1a5276', fontSize: 16 },
+  secondaryBtnTextDisabled: { color: '#bdc3c7' },
+  loadingPhoto: {
+    width: 200,
+    height: 200,
+    borderRadius: 12,
+  },
   loadingText: { fontSize: 18, color: '#2c3e50', marginTop: 20 },
   loadingSubtext: { fontSize: 14, color: '#95a5a6', marginTop: 8 },
   resultContainer: { flex: 1, padding: 16 },
+  resultPhoto: {
+    width: '100%',
+    height: 200,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
   resultCard: {
     backgroundColor: '#fff',
     borderRadius: 16,
