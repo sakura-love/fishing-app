@@ -41,8 +41,20 @@ export function WeatherCard({ day, isToday }: WeatherCardProps) {
         <Text style={styles.tempLow}>{day.tempMin}°</Text>
       </View>
 
+      {isToday && day.currentTemp !== undefined ? (
+        <View style={styles.currentRow}>
+          <View style={styles.currentItem}>
+            <Text style={styles.currentLabel}>当前温度</Text>
+            <Text style={styles.currentValue}>{day.currentTemp}°C</Text>
+          </View>
+          <View style={styles.currentItem}>
+            <Text style={styles.currentLabel}>当前水温</Text>
+            <Text style={styles.currentValue}>{day.currentWaterTemp}°C</Text>
+          </View>
+        </View>
+      ) : null}
       <View style={styles.waterTempRow}>
-        <Text style={styles.waterTempLabel}>预估水温</Text>
+        <Text style={styles.waterTempLabel}>{isToday ? '日均水温' : '预估水温'}</Text>
         <Text style={styles.waterTempValue}>{day.waterTemp}°C</Text>
       </View>
 
@@ -110,6 +122,17 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   ratingText: { color: '#fff', fontSize: 12, fontWeight: '600' },
+  currentRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  currentItem: { alignItems: 'center' },
+  currentLabel: { fontSize: 11, color: '#95a5a6' },
+  currentValue: { fontSize: 15, fontWeight: '700', color: '#27ae60', marginTop: 2 },
   detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

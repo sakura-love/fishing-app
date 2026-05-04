@@ -106,7 +106,11 @@ export default function IdentifyScreen() {
     if (result) {
       router.push({
         pathname: '/catch/new',
-        params: { fishId: result.speciesId, fishName: result.name },
+        params: {
+          fishId: result.speciesId,
+          fishName: result.name,
+          photoUri: photoUri || '',
+        },
       });
     }
   };

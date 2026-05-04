@@ -1,8 +1,12 @@
 import { WeatherDay } from './types';
 import { estimateWaterTemp } from '../utils/water-temp';
+import { getSetting, setSetting } from './storage';
 
 // Open-Meteo 免费天气 API（无需 API Key）
 const OPEN_METEO_API = 'https://api.open-meteo.com/v1/forecast';
+
+// 缓存有效期（毫秒）
+const CACHE_DURATION = 30 * 60 * 1000; // 30分钟
 
 // WMO 天气代码映射为中文描述
 const WMO_WEATHER_CODES: Record<number, string> = {
@@ -36,45 +40,77 @@ const WMO_WEATHER_CODES: Record<number, string> = {
   99: '雷暴伴大冰雹',
 };
 
-interface OpenMeteoResponse {
-  daily: {
-    time: string[];
-    temperature_2m_max: number[];
-    temperature_2m_min: number[];
-    weathercode: number[];
-    windspeed_10m_max: number[];
-    precipitation_sum: number[];
-    relative_humidity_2m_max?: number[];
-  };
+interface WeatherCache {
+  timestamp: number;
+  lat: number;
+  lon: number;
+  data: WeatherDay[];
 }
 
+let memoryCache: WeatherCache | null = null;
+
 export async function getWeather(lat: number, lon: number): Promise<WeatherDay[]> {
+  // 检查内存缓存（相同坐标，30分钟内有效）
+  if (memoryCache && 
+      Math.abs(memoryCache.lat - lat) < 0.01 && 
+      Math.abs(memoryCache.lon - lon) < 0.01 &&
+      Date.now() - memoryCache.timestamp < CACHE_DURATION) {
+    console.log('[Weather] Using memory cache');
+    return memoryCache.data;
+  }
+
+  // 检查数据库缓存
+  try {
+    const cachedJson = await getSetting('weather_cache');
+    if (cachedJson) {
+      const cached: WeatherCache = JSON.parse(cachedJson);
+      if (Math.abs(cached.lat - lat) < 0.01 && 
+          Math.abs(cached.lon - lon) < 0.01 &&
+          Date.now() - cached.timestamp < CACHE_DURATION) {
+        console.log('[Weather] Using DB cache');
+        memoryCache = cached;
+        return cached.data;
+      }
+    }
+  } catch (e) {
+    console.warn('[Weather] Cache read error:', e);
+  }
+
+  // 请求新数据
   try {
     const url = `${OPEN_METEO_API}?latitude=${lat}&longitude=${lon}` +
       `&daily=temperature_2m_max,temperature_2m_min,weathercode,windspeed_10m_max,precipitation_sum` +
-      `&hourly=relative_humidity_2m` +
+      `&hourly=temperature_2m,relative_humidity_2m` +
+      `&current=temperature_2m,relative_humidity_2m,weathercode,wind_speed_10m` +
       `&timezone=auto&forecast_days=3`;
 
+    console.log('[Weather] Fetching from Open-Meteo...');
     const response = await fetch(url);
     if (!response.ok) {
-      console.error('Open-Meteo API error:', response.status);
+      console.error('[Weather] API error:', response.status);
       return getMockWeather();
     }
 
-    const data: OpenMeteoResponse = await response.json();
+    const data = await response.json();
 
     if (!data.daily || !data.daily.time || data.daily.time.length === 0) {
-      console.error('Open-Meteo: empty response');
+      console.error('[Weather] Empty response');
       return getMockWeather();
     }
 
     const now = new Date();
     const month = now.getMonth() + 1;
+    const currentHour = now.getHours();
 
-    // 计算每日平均湿度（从小时数据中提取）
+    // 获取当前温度和当前小时的湿度
+    const currentTemp = data.current?.temperature_2m ?? null;
+    const currentHumidity = data.current?.relative_humidity_2m ?? null;
+    const currentWindSpeed = data.current?.wind_speed_10m ?? null;
+
+    // 获取每日平均湿度（从小时数据中提取）
     const dailyHumidity = calculateDailyHumidity(data);
 
-    return data.daily.time.map((date, index) => {
+    const weatherDays = data.daily.time.map((date: string, index: number) => {
       const tempMax = Math.round(data.daily.temperature_2m_max[index]);
       const tempMin = Math.round(data.daily.temperature_2m_min[index]);
       const avgTemp = (tempMax + tempMin) / 2;
@@ -83,7 +119,7 @@ export async function getWeather(lat: number, lon: number): Promise<WeatherDay[]
       const precip = data.daily.precipitation_sum[index] || 0;
       const humidity = dailyHumidity[index] || 60;
 
-      return {
+      const day: WeatherDay = {
         date,
         tempMax,
         tempMin,
@@ -94,17 +130,47 @@ export async function getWeather(lat: number, lon: number): Promise<WeatherDay[]
         precip,
         waterTemp: estimateWaterTemp(avgTemp, windSpeed, month),
       };
+
+      // 只在第一天（今天）添加当前温度和当前水温
+      if (index === 0) {
+        if (currentTemp !== null) {
+          day.currentTemp = Math.round(currentTemp);
+          day.currentWaterTemp = estimateWaterTemp(
+            currentTemp,
+            currentWindSpeed ?? windSpeed,
+            month
+          );
+        }
+      }
+
+      return day;
     });
+
+    // 缓存结果
+    const cacheObj: WeatherCache = {
+      timestamp: Date.now(),
+      lat,
+      lon,
+      data: weatherDays,
+    };
+    memoryCache = cacheObj;
+    try {
+      await setSetting('weather_cache', JSON.stringify(cacheObj));
+    } catch (e) {
+      console.warn('[Weather] Cache save error:', e);
+    }
+
+    console.log('[Weather] Data fetched successfully');
+    return weatherDays;
   } catch (error) {
-    console.error('Weather fetch error:', error);
+    console.error('[Weather] Fetch error:', error);
     return getMockWeather();
   }
 }
 
-function calculateDailyHumidity(data: OpenMeteoResponse): number[] {
-  // 如果有小时级湿度数据，计算每天的平均值
-  if ((data as any).hourly?.relative_humidity_2m) {
-    const hourly = (data as any).hourly.relative_humidity_2m as number[];
+function calculateDailyHumidity(data: any): number[] {
+  if (data.hourly?.relative_humidity_2m) {
+    const hourly = data.hourly.relative_humidity_2m as number[];
     const dailyAvg: number[] = [];
     for (let i = 0; i < 3 && i * 24 < hourly.length; i++) {
       const dayHours = hourly.slice(i * 24, (i + 1) * 24);
@@ -113,11 +179,10 @@ function calculateDailyHumidity(data: OpenMeteoResponse): number[] {
     }
     return dailyAvg;
   }
-  return [60, 55, 65]; // 默认值
+  return [60, 55, 65];
 }
 
 function getWeatherIconFromCode(code: number, precip: number): string {
-  // 根据 WMO 天气代码返回 emoji
   if (code === 0) return '☀️';
   if (code <= 2) return '⛅';
   if (code === 3) return '☁️';
@@ -134,7 +199,7 @@ function getMockWeather(): WeatherDay[] {
   const month = today.getMonth() + 1;
 
   const mockDays = [
-    { tempMax: 25, tempMin: 18, textDay: '多云', windSpeed: 10, humidity: 65, precip: 0 },
+    { tempMax: 25, tempMin: 18, textDay: '多云', windSpeed: 10, humidity: 65, precip: 0, currentTemp: 22 },
     { tempMax: 27, tempMin: 19, textDay: '晴', windSpeed: 8, humidity: 55, precip: 0 },
     { tempMax: 23, tempMin: 17, textDay: '小雨', windSpeed: 15, humidity: 80, precip: 5 },
   ];
@@ -144,7 +209,7 @@ function getMockWeather(): WeatherDay[] {
     date.setDate(date.getDate() + index);
     const avgTemp = (mock.tempMax + mock.tempMin) / 2;
 
-    return {
+    const day: WeatherDay = {
       date: date.toISOString().split('T')[0],
       tempMax: mock.tempMax,
       tempMin: mock.tempMin,
@@ -155,6 +220,13 @@ function getMockWeather(): WeatherDay[] {
       precip: mock.precip,
       waterTemp: estimateWaterTemp(avgTemp, mock.windSpeed, month),
     };
+
+    if (index === 0 && mock.currentTemp) {
+      day.currentTemp = mock.currentTemp;
+      day.currentWaterTemp = estimateWaterTemp(mock.currentTemp, mock.windSpeed, month);
+    }
+
+    return day;
   });
 }
 

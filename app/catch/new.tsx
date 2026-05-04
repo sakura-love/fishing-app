@@ -7,7 +7,7 @@ import { useCatches } from '../../hooks/useCatches';
 
 export default function NewCatchScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ fishId?: string; fishName?: string }>();
+  const params = useLocalSearchParams<{ fishId?: string; fishName?: string; photoUri?: string }>();
   const { addRecord } = useCatches();
   const [selectedFish, setSelectedFish] = useState<FishSpecies | null>(null);
 
@@ -16,7 +16,10 @@ export default function NewCatchScreen() {
       const fish = getFishById(params.fishId);
       if (fish) setSelectedFish(fish);
     }
-  }, [params.fishId]);
+    if (params.photoUri) {
+      setPhotoUri(params.photoUri);
+    }
+  }, [params.fishId, params.photoUri]);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [length, setLength] = useState('');
   const [weight, setWeight] = useState('');

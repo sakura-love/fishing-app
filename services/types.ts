@@ -23,6 +23,8 @@ export interface WeatherDay {
   humidity: number;
   precip: number;
   waterTemp: number;
+  currentTemp?: number;       // 当前实际温度
+  currentWaterTemp?: number;  // 当前预估水温
 }
 
 export interface IdentifyResult {
