@@ -65,13 +65,13 @@
 |:---:|:---:|:---:|:---:|
 | ![首页](screenshots/home.png) | ![鱼种图鉴](screenshots/encyclopedia.png) | ![钓获记录](screenshots/records.png) | ![AI 识别](screenshots/identify.png) |
 
-### 📤 社交分享卡片
+### 📤 社交分享
 
-| 钓获详情页 | 分享卡片预览 |
-|:---:|:---:|
-| ![钓获详情](screenshots/catch-detail.png) | ![分享卡片](screenshots/share-card.png) |
+| 钓获详情页 |
+|:---:|
+| ![钓获详情](screenshots/catch-detail.png) |
 
-> 一键生成精美分享卡片，可直接分享到微信、朋友圈、微博等社交平台
+> 一键生成精美分享卡片，分享到社交平台（功能开发中）
 
 </div>
 
