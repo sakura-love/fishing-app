@@ -4,7 +4,6 @@ import { useCallback } from 'react';
 import { useWeather } from '../../hooks/useWeather';
 import { useCatches } from '../../hooks/useCatches';
 import { WeatherCard } from '../../components/WeatherCard';
-import { getFishingAdvice } from '../../utils/water-temp';
 import { getFishForWaterTemp, fishEncyclopedia } from '../../data/fish-encyclopedia';
 
 export default function HomeScreen() {
@@ -19,7 +18,6 @@ export default function HomeScreen() {
   );
 
   const todayWeather = weather[0];
-  const fishingAdvice = todayWeather ? getFishingAdvice(todayWeather.waterTemp) : '';
   const recommendedFish = todayWeather
     ? getFishForWaterTemp(todayWeather.waterTemp).slice(0, 5)
     : fishEncyclopedia.slice(0, 5);
@@ -54,20 +52,6 @@ export default function HomeScreen() {
           </ScrollView>
         )}
       </View>
-
-      {/* 钓鱼建议 */}
-      {todayWeather && (
-        <View style={styles.adviceSection}>
-          <View style={styles.adviceCard}>
-            <Text style={styles.adviceTitle}>今日钓鱼建议</Text>
-            <Text style={styles.adviceText}>{fishingAdvice}</Text>
-            <View style={styles.adviceTempRow}>
-              <Text style={styles.adviceTempLabel}>当前预估水温</Text>
-              <Text style={styles.adviceTempValue}>{todayWeather.waterTemp}°C</Text>
-            </View>
-          </View>
-        </View>
-      )}
 
       {/* 推荐鱼种 */}
       <View style={styles.section}>
