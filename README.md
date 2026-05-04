@@ -25,7 +25,7 @@
 - 自动获取 GPS 定位，实时查询 3 日天气预报
 - 基于气温、风速、季节智能估算水温
 - 根据水温给出钓鱼建议和鱼种推荐
-- 使用 [Open-Meteo](https://open-meteo.com) 免费 API，**无需注册，无需配置**
+- 使用 [高德天气](https://www.amap.com) API，**无需配置，自动定位到区/县**
 
 ### 🐟 鱼种图鉴
 - 内置 **40+ 种**常见淡水鱼和海水鱼数据
@@ -156,7 +156,7 @@ fishing-app/
 ├── services/                   # 服务层
 │   ├── types.ts                # TypeScript 类型定义
 │   ├── storage.ts              # SQLite 本地存储
-│   ├── weather.ts              # Open-Meteo 天气 API
+│   ├── weather.ts              # 高德天气 API
 │   └── fish-recognition.ts     # AI 鱼类识别
 ├── utils/                      # 工具函数
 │   ├── water-temp.ts           # 水温估算算法
@@ -182,7 +182,7 @@ fishing-app/
 | **expo-location** | GPS 定位与地理编码 |
 | **expo-image-picker** | 相机与相册访问 |
 | **react-native-view-shot** | 截图用于分享 |
-| **Open-Meteo API** | 免费天气数据 |
+| **高德天气 API** | 天气预报与地理编码 |
 | **智谱 AI GLM-4V** | 免费视觉识别模型 |
 
 ---
@@ -191,7 +191,7 @@ fishing-app/
 
 | API | 是否需要 Key | 用途 |
 |:---|:---:|:---|
-| [Open-Meteo](https://open-meteo.com) | ❌ 不需要 | 天气预报、水温估算 |
+| [高德天气](https://www.amap.com) | ❌ 不需要 | 天气预报、地理编码、水温估算 |
 | [智谱 AI](https://open.bigmodel.cn) | ⚙️ 可选 | AI 鱼类识别（免费模型） |
 
 > 天气功能开箱即用，AI 识别需要在应用内「我的 → API 配置」中填入智谱 AI 的 API Key。不配置也可以使用模拟识别。
