@@ -7,7 +7,7 @@
 [![React Native](https://img.shields.io/badge/React%20Native-0.81-blue?style=for-the-badge&logo=react)](https://reactnative.dev/)
 [![Expo](https://img.shields.io/badge/Expo-SDK%2054-black?style=for-the-badge&logo=expo)](https://expo.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
-[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
+[![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey?style=for-the-badge)](LICENSE)
 
 <br />
 
@@ -212,7 +212,11 @@ fishing-app/
 
 ## 📜 开源协议
 
-本项目基于 [MIT License](LICENSE) 开源。
+本项目基于 [CC BY-NC-SA 4.0](LICENSE) 许可证开源。
+
+✅ 允许：分享、改编、非商业使用
+❌ 禁止：商业用途
+📋 要求：注明出处、相同方式共享
 
 ---
 
