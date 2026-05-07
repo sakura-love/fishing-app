@@ -1,19 +1,10 @@
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
 import { useCatches } from '../../hooks/useCatches';
-import { getFishById } from '../../data/fish-encyclopedia';
 import { useUnits } from '../../hooks/useUnits';
+import { getFishImageSource } from '../../data/fish-images';
 
-const FISH_EMOJIS: Record<string, string> = {
-  '鲤科': '🐟',
-  '鲈科': '🐠',
-  '鳢科': '🦈',
-  '鲶科': '🐡',
-  '鲿科': '🐡',
-  '鮨科': '🐟',
-  'default': '🐟',
-};
 
 export default function RecordsScreen() {
   const router = useRouter();
@@ -25,11 +16,6 @@ export default function RecordsScreen() {
       loadRecords();
     }, [loadRecords])
   );
-
-  const getFishEmoji = (fishId: string): string => {
-    const fish = getFishById(fishId);
-    return FISH_EMOJIS[fish?.family || ''] || FISH_EMOJIS['default'];
-  };
 
   const formatDate = (isoDate: string): string => {
     const date = new Date(isoDate);
@@ -60,7 +46,7 @@ export default function RecordsScreen() {
               onPress={() => router.push(`/catch/${item.id}`)}
             >
               <View style={styles.recordPreview}>
-                <Text style={styles.recordEmoji}>{getFishEmoji(item.fishSpeciesId)}</Text>
+                <Image source={getFishImageSource(item.fishSpeciesId)} style={styles.recordImage} resizeMode="cover" />
               </View>
               <View style={styles.recordInfo}>
                 <Text style={styles.recordName}>{item.fishName}</Text>
@@ -125,11 +111,9 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 12,
-    backgroundColor: '#eaf2f8',
-    justifyContent: 'center',
-    alignItems: 'center',
+    overflow: 'hidden',
   },
-  recordEmoji: { fontSize: 28 },
+  recordImage: { width: 56, height: 56, borderRadius: 12 },
   recordInfo: { flex: 1, marginLeft: 12 },
   recordName: { fontSize: 17, fontWeight: '600', color: '#2c3e50' },
   recordDate: { fontSize: 13, color: '#95a5a6', marginTop: 2 },

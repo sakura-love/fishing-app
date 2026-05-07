@@ -1,8 +1,9 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { getFishById } from '../../data/fish-encyclopedia';
 import { useCatches } from '../../hooks/useCatches';
 import { useUnits } from '../../hooks/useUnits';
+import { getFishImageSource } from '../../data/fish-images';
 
 const CATEGORY_LABELS: Record<string, string> = {
   freshwater: '淡水鱼',
@@ -30,7 +31,7 @@ export default function FishDetailScreen() {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.fishEmoji}>🐟</Text>
+        <Image source={getFishImageSource(fish.id)} style={styles.fishImage} resizeMode="cover" />
         <Text style={styles.fishName}>{fish.name}</Text>
         <Text style={styles.scientificName}>{fish.scientificName}</Text>
         {caughtCount > 0 && (
@@ -84,7 +85,7 @@ const styles = StyleSheet.create({
     padding: 32,
     alignItems: 'center',
   },
-  fishEmoji: { fontSize: 64 },
+  fishImage: { width: 96, height: 96, borderRadius: 16 },
   fishName: { fontSize: 28, fontWeight: 'bold', color: '#fff', marginTop: 12 },
   scientificName: { fontSize: 14, color: '#aed6f1', fontStyle: 'italic', marginTop: 4 },
   caughtBadge: {

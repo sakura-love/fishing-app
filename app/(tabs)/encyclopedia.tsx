@@ -1,9 +1,10 @@
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Image } from 'react-native';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { fishEncyclopedia, FishSpecies, searchFish } from '../../data/fish-encyclopedia';
 import { useCatches } from '../../hooks/useCatches';
 import { useUnits } from '../../hooks/useUnits';
+import { getFishImageSource } from '../../data/fish-images';
 
 const CATEGORIES = [
   { key: 'all', label: '全部' },
@@ -87,8 +88,8 @@ export default function EncyclopediaScreen() {
               style={styles.fishCard}
               onPress={() => router.push(`/fish/${item.id}`)}
             >
-              <View style={[styles.fishIcon, caught > 0 && styles.fishIconCaught]}>
-                <Text style={styles.fishEmoji}>{caught > 0 ? '🐟' : '🐠'}</Text>
+              <View style={styles.fishIcon}>
+                <Image source={getFishImageSource(item.id)} style={styles.fishImage} resizeMode="cover" />
               </View>
               <View style={styles.fishInfo}>
                 <Text style={styles.fishName}>{item.name}</Text>
@@ -173,13 +174,10 @@ const styles = StyleSheet.create({
   fishIcon: {
     width: 48,
     height: 48,
-    borderRadius: 24,
-    backgroundColor: '#eaf2f8',
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderRadius: 12,
+    overflow: 'hidden',
   },
-  fishIconCaught: { backgroundColor: '#d5f5e3' },
-  fishEmoji: { fontSize: 24 },
+  fishImage: { width: 48, height: 48, borderRadius: 12 },
   fishInfo: { flex: 1, marginLeft: 12 },
   fishName: { fontSize: 17, fontWeight: '600', color: '#2c3e50' },
   fishFamily: { fontSize: 13, color: '#95a5a6', marginTop: 2 },

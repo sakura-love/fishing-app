@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
 import { useWeather } from '../../hooks/useWeather';
@@ -6,6 +6,7 @@ import { useCatches } from '../../hooks/useCatches';
 import { WeatherCard } from '../../components/WeatherCard';
 import { getFishForWaterTemp, fishEncyclopedia } from '../../data/fish-encyclopedia';
 import { useUnits } from '../../hooks/useUnits';
+import { getFishImageSource } from '../../data/fish-images';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -66,6 +67,7 @@ export default function HomeScreen() {
               style={styles.fishChip}
               onPress={() => router.push(`/fish/${fish.id}`)}
             >
+              <Image source={getFishImageSource(fish.id)} style={styles.fishChipImage} resizeMode="cover" />
               <Text style={styles.fishChipName}>{fish.name}</Text>
               <Text style={styles.fishChipTemp}>
                 {formatTemp(fish.optimalTemp.min)}-{formatTemp(fish.optimalTemp.max)}
@@ -153,6 +155,7 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 2,
   },
+  fishChipImage: { width: 48, height: 48, borderRadius: 10, marginBottom: 6 },
   fishChipName: { fontSize: 15, fontWeight: '600', color: '#2c3e50' },
   fishChipTemp: { fontSize: 12, color: '#3498db', marginTop: 2 },
   actions: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 8 },
