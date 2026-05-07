@@ -7,34 +7,28 @@ const ZHIPU_API = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
 
 export async function identifyFish(imageUri: string): Promise<IdentifyResult> {
   const apiKey = await getSetting('zhipu_api_key');
-  console.log('[Fish Recognition] API Key:', apiKey ? `found (${apiKey.substring(0, 8)}...)` : 'NOT FOUND');
 
   if (!apiKey) {
-    console.log('[Fish Recognition] No API key, using mock');
     return getMockIdentification();
   }
 
   try {
     // 读取图片并转为 base64
-    console.log('[Fish Recognition] Reading image:', imageUri);
     let base64: string;
     try {
       // 优先尝试新版 API
       base64 = await readAsStringAsync(imageUri, { encoding: 'base64' });
     } catch (fileError) {
-      console.warn('[Fish Recognition] readAsStringAsync failed, trying copy + read:', fileError);
       // 如果失败，先复制到缓存目录再读取
       const fileName = `identify_${Date.now()}.jpg`;
       const destPath = `${cacheDirectory}${fileName}`;
       await copyAsync({ from: imageUri, to: destPath });
       base64 = await readAsStringAsync(destPath, { encoding: 'base64' });
     }
-    console.log('[Fish Recognition] Image read success, base64 length:', base64.length);
 
     // 构建鱼种列表用于提示
     const fishList = fishEncyclopedia.map((f) => `${f.name}(${f.scientificName})`).join('、');
 
-    console.log('[Fish Recognition] Sending request to Zhipu API...');
     const apiResponse = await fetch(ZHIPU_API, {
       method: 'POST',
       headers: {
@@ -70,27 +64,20 @@ export async function identifyFish(imageUri: string): Promise<IdentifyResult> {
       }),
     });
 
-    console.log('[Fish Recognition] Response status:', apiResponse.status);
-
     if (!apiResponse.ok) {
       const errorText = await apiResponse.text();
-      console.error('[Fish Recognition] API error:', apiResponse.status, errorText);
       throw new Error(`API returned ${apiResponse.status}: ${errorText.substring(0, 200)}`);
     }
 
     const data = await apiResponse.json();
-    console.log('[Fish Recognition] Response data keys:', Object.keys(data));
 
     if (data.choices && data.choices[0]) {
       const content = data.choices[0].message.content;
-      console.log('[Fish Recognition] Response content:', content.substring(0, 200));
       // 解析 JSON 响应
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const result = JSON.parse(jsonMatch[0]);
         const matchedFish = findBestMatch(result.name);
-        console.log('[Fish Recognition] Matched fish:', matchedFish?.name || result.name);
-
         return {
           name: matchedFish?.name || result.name,
           speciesId: matchedFish?.id || 'unknown',
@@ -100,10 +87,8 @@ export async function identifyFish(imageUri: string): Promise<IdentifyResult> {
       }
     }
 
-    console.warn('[Fish Recognition] Could not parse response, using mock');
     return getMockIdentification();
   } catch (error) {
-    console.error('[Fish Recognition] Error:', error);
     // 不要静默回退到 mock，而是抛出错误让 UI 处理
     throw error;
   }

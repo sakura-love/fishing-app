@@ -21,7 +21,6 @@ export default function IdentifyScreen() {
 
   const checkApiKey = async () => {
     const key = await getSetting('zhipu_api_key');
-    console.log('[Identify] API Key check:', key ? 'found' : 'not found');
     setHasApiKey(!!key && key.length > 0);
   };
 
@@ -92,11 +91,9 @@ export default function IdentifyScreen() {
 
     try {
       const identifyResult = await identifyFish(uri);
-      console.log('[Identify] Result:', identifyResult);
       setResult(identifyResult);
       setState('result');
     } catch (error) {
-      console.error('Identify error:', error);
       Alert.alert('识别失败', '无法识别该图片，请重试');
       setState('idle');
     }

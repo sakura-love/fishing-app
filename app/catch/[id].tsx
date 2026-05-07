@@ -1,17 +1,18 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useEffect, useRef } from 'react';
-import { captureRef } from 'react-native-view-shot';
-import * as Sharing from 'expo-sharing';
+import { shareView } from '../../utils/share';
 import { useCatches } from '../../hooks/useCatches';
 import { CatchRecord } from '../../services/types';
 import { ShareCard } from '../../components/ShareCard';
+import { useUnits } from '../../hooks/useUnits';
 
 export default function CatchDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { records, deleteRecord, stats } = useCatches();
   const [record, setRecord] = useState<CatchRecord | null>(null);
+  const { formatLength, formatWeight, lengthUnit, weightUnit } = useUnits();
   const shareCardRef = useRef<View>(null);
 
   useEffect(() => {
@@ -36,27 +37,9 @@ export default function CatchDetailScreen() {
   };
 
   const handleShare = async () => {
-    try {
-      if (!shareCardRef.current) return;
-
-      const uri = await captureRef(shareCardRef, {
-        format: 'png',
-        quality: 1,
-      });
-
-      const isAvailable = await Sharing.isAvailableAsync();
-      if (!isAvailable) {
-        Alert.alert('提示', '当前设备不支持分享');
-        return;
-      }
-
-      await Sharing.shareAsync(uri, {
-        mimeType: 'image/png',
-        dialogTitle: '分享钓获记录',
-      });
-    } catch (error) {
-      console.error('Share error:', error);
-      Alert.alert('分享失败', '请重试');
+    const success = await shareView(shareCardRef);
+    if (!success) {
+      Alert.alert('分享失败', '当前设备不支持分享或操作失败，请重试');
     }
   };
 
@@ -92,14 +75,14 @@ export default function CatchDetailScreen() {
         <View style={styles.statsRow}>
           {record.length && (
             <View style={styles.stat}>
-              <Text style={styles.statValue}>{record.length}</Text>
-              <Text style={styles.statLabel}>长度(cm)</Text>
+              <Text style={styles.statValue}>{record.length ? formatLength(record.length) : "-"}</Text>
+              <Text style={styles.statLabel}>长度({lengthUnit})</Text>
             </View>
           )}
           {record.weight && (
             <View style={styles.stat}>
-              <Text style={styles.statValue}>{record.weight}</Text>
-              <Text style={styles.statLabel}>重量(kg)</Text>
+              <Text style={styles.statValue}>{record.weight ? formatWeight(record.weight) : "-"}</Text>
+              <Text style={styles.statLabel}>重量({weightUnit})</Text>
             </View>
           )}
           <View style={styles.stat}>

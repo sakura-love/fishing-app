@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { fishEncyclopedia, FishSpecies, searchFish } from '../../data/fish-encyclopedia';
 import { useCatches } from '../../hooks/useCatches';
+import { useUnits } from '../../hooks/useUnits';
 
 const CATEGORIES = [
   { key: 'all', label: '全部' },
@@ -17,11 +18,12 @@ export default function EncyclopediaScreen() {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const { fishCounts, loadRecords } = useCatches();
+  const { formatTemp } = useUnits();
 
   useFocusEffect(
     useCallback(() => {
       loadRecords();
-    }, [])
+    }, [loadRecords])
   );
 
   const getFilteredFish = (): FishSpecies[] => {
@@ -94,7 +96,7 @@ export default function EncyclopediaScreen() {
                   {item.family} · {item.category === 'freshwater' ? '淡水' : '海水'}
                 </Text>
                 <Text style={styles.fishTemp}>
-                  适宜水温 {item.optimalTemp.min}-{item.optimalTemp.max}°C
+                  适宜水温 {formatTemp(item.optimalTemp.min)}-{formatTemp(item.optimalTemp.max)}
                 </Text>
               </View>
               <View style={[styles.caughtBadge, caught > 0 && styles.caughtBadgeActive]}>

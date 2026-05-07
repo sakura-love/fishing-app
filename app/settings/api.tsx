@@ -1,14 +1,13 @@
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, ScrollView } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
-import { getSetting, setSetting, getAllSettings } from '../../services/storage';
+import { getSetting, setSetting } from '../../services/storage';
 
 export default function ApiSettingsScreen() {
   const router = useRouter();
   const [zhipuKey, setZhipuKey] = useState('');
   const [saving, setSaving] = useState(false);
   const [showKey, setShowKey] = useState(false);
-  const [debugInfo, setDebugInfo] = useState('');
 
   useEffect(() => {
     loadSettings();
@@ -17,23 +16,19 @@ export default function ApiSettingsScreen() {
   const loadSettings = async () => {
     try {
       const zhipu = await getSetting('zhipu_api_key');
-      console.log('[API Settings] Loaded zhipu_api_key:', zhipu ? `${zhipu.substring(0, 8)}...` : 'null');
       if (zhipu) setZhipuKey(zhipu);
 
       const hideState = await getSetting('api_key_hidden');
-      console.log('[API Settings] Loaded api_key_hidden:', hideState);
       setShowKey(hideState !== 'true');
     } catch (error) {
-      console.error('[API Settings] Load error:', error);
-      setDebugInfo('加载设置失败: ' + String(error));
+      // 加载设置失败
     }
   };
 
   const handleToggleShow = async () => {
     const newShowState = !showKey;
     setShowKey(newShowState);
-    const success = await setSetting('api_key_hidden', newShowState ? 'false' : 'true');
-    console.log('[API Settings] Toggle show key:', newShowState, 'saved:', success);
+    await setSetting('api_key_hidden', newShowState ? 'false' : 'true');
   };
 
   const handleSave = async () => {
@@ -45,16 +40,14 @@ export default function ApiSettingsScreen() {
 
     setSaving(true);
     try {
-      console.log('[API Settings] Saving zhipu_api_key:', `${trimmedKey.substring(0, 8)}...`);
       const success = await setSetting('zhipu_api_key', trimmedKey);
-      console.log('[API Settings] Save result:', success);
 
       if (success) {
         // 再次验证
         const verifyKey = await getSetting('zhipu_api_key');
         if (verifyKey === trimmedKey) {
           setZhipuKey(trimmedKey);
-          Alert.alert('✅ 保存成功', `API Key 已保存并验证成功\n\nKey: ${trimmedKey.substring(0, 8)}...${trimmedKey.substring(trimmedKey.length - 4)}`, [
+          Alert.alert('✅ 保存成功', 'API Key 已保存并验证成功', [
             { text: '确定', onPress: () => router.back() },
           ]);
         } else {
@@ -64,20 +57,10 @@ export default function ApiSettingsScreen() {
         Alert.alert('❌ 保存失败', '写入数据库失败，请重试');
       }
     } catch (error) {
-      console.error('[API Settings] Save error:', error);
-      Alert.alert('❌ 错误', '保存失败: ' + String(error));
+      Alert.alert('❌ 错误', '保存失败，请重试');
     } finally {
       setSaving(false);
     }
-  };
-
-  const handleShowDebug = async () => {
-    const allSettings = await getAllSettings();
-    const keys = Object.keys(allSettings);
-    const info = keys.length > 0
-      ? keys.map(k => `${k}: ${allSettings[k].substring(0, 20)}${allSettings[k].length > 20 ? '...' : ''}`).join('\n')
-      : '(无设置数据)';
-    Alert.alert('调试信息', `数据库中的设置:\n\n${info}`);
   };
 
   return (
@@ -85,7 +68,7 @@ export default function ApiSettingsScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>🌤️ 天气信息</Text>
         <Text style={styles.description}>
-          天气数据由高德天气 API 提供，无需配置，自动根据 GPS 位置获取实时天气和预报。
+          天气数据由和风天气 API 提供，无需配置，自动根据 GPS 位置获取实时天气和预报。
         </Text>
       </View>
 
@@ -133,10 +116,6 @@ export default function ApiSettingsScreen() {
         disabled={saving}
       >
         <Text style={styles.saveBtnText}>{saving ? '保存中...' : '💾 保存配置'}</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity style={styles.debugBtn} onPress={handleShowDebug}>
-        <Text style={styles.debugBtnText}>🔍 查看调试信息</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -199,11 +178,4 @@ const styles = StyleSheet.create({
   },
   saveBtnDisabled: { opacity: 0.6 },
   saveBtnText: { color: '#fff', fontSize: 17, fontWeight: '600' },
-  debugBtn: {
-    marginHorizontal: 16,
-    marginBottom: 32,
-    padding: 12,
-    alignItems: 'center',
-  },
-  debugBtnText: { color: '#95a5a6', fontSize: 14 },
 });

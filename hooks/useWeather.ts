@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import * as Location from 'expo-location';
 import { WeatherDay } from '../services/types';
-import { getWeather, getCityName } from '../services/weather';
+import { getWeather } from '../services/weather';
 
 interface UseWeatherResult {
   weather: WeatherDay[];
@@ -16,66 +16,54 @@ export function useWeather(): UseWeatherResult {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [locationName, setLocationName] = useState('定位中...');
+  const lastCoords = useRef<{ lat: number; lon: number } | null>(null);
+  const fetching = useRef(false);
 
-  const lastLocation = useRef<{ lat: number; lon: number } | null>(null);
-
-  const fetchWeather = async () => {
+  const load = useCallback(async () => {
+    if (fetching.current) return;
+    fetching.current = true;
     setLoading(true);
     setError(null);
 
     try {
-      // 如果有上次位置，先用缓存位置快速加载天气
-      if (lastLocation.current) {
-        console.log('[Weather] Using cached location');
-        const data = await getWeather(lastLocation.current.lat, lastLocation.current.lon);
-        setWeather(data);
+      // 1. 有缓存坐标就先用它快速出数据
+      if (lastCoords.current) {
+        const r = await getWeather(lastCoords.current.lat, lastCoords.current.lon);
+        setWeather(r.weather);
+        if (r.city !== '未知位置') setLocationName(r.city);
         setLoading(false);
       }
 
+      // 2. 获取最新 GPS
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         setError('需要定位权限才能获取天气信息');
         setLocationName('未知位置');
-        const data = await getWeather(39.9, 116.4);
-        setWeather(data);
-        setLoading(false);
+        const r = await getWeather(39.9, 116.4);
+        setWeather(r.weather);
         return;
       }
 
-      // 使用较短超时的快速定位
-      const location = await Location.getLastKnownPositionAsync() 
-        ?? await Location.getCurrentPositionAsync({ 
-          accuracy: Location.Accuracy.Balanced,
-          timeInterval: 5000,
-        });
-      
-      const { latitude, longitude } = location.coords;
-      lastLocation.current = { lat: latitude, lon: longitude };
+      const pos = await Location.getLastKnownPositionAsync()
+        ?? await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const { latitude: lat, longitude: lon } = pos.coords;
+      lastCoords.current = { lat, lon };
 
-      // 获取地名（使用高德地理编码，比系统自带更准确）
-      try {
-        const city = await getCityName(latitude, longitude);
-        setLocationName(city);
-      } catch {
-        setLocationName('未知位置');
-      }
-
-      const data = await getWeather(latitude, longitude);
-      setWeather(data);
-    } catch (err) {
-      console.error('Weather error:', err);
+      const r = await getWeather(lat, lon);
+      setWeather(r.weather);
+      setLocationName(r.city);
+    } catch (e) {
       setError('获取天气信息失败');
       setLocationName('未知位置');
-      const data = await getWeather(39.9, 116.4);
-      setWeather(data);
+      const r = await getWeather(39.9, 116.4);
+      setWeather(r.weather);
     } finally {
       setLoading(false);
+      fetching.current = false;
     }
-  };
-
-  useEffect(() => {
-    fetchWeather();
   }, []);
 
-  return { weather, loading, error, locationName, refresh: fetchWeather };
+  useEffect(() => { load(); }, [load]);
+
+  return { weather, loading, error, locationName, refresh: load };
 }

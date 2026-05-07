@@ -30,7 +30,7 @@ export default function AboutScreen() {
           <Text style={styles.techItem}>React Native 0.81 + Expo SDK 54</Text>
           <Text style={styles.techItem}>TypeScript 5.9</Text>
           <Text style={styles.techItem}>SQLite 本地数据库</Text>
-          <Text style={styles.techItem}>高德天气 API</Text>
+          <Text style={styles.techItem}>和风天气 API</Text>
           <Text style={styles.techItem}>智谱 AI GLM-4V 视觉识别</Text>
         </View>
       </View>

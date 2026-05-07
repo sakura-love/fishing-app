@@ -1,286 +1,241 @@
 import { WeatherDay } from './types';
 import { estimateWaterTemp } from '../utils/water-temp';
 import { getSetting, setSetting } from './storage';
+import { getWeatherApiKey } from '../utils/crypto';
 
-// 高德天气 API
-const AMAP_KEY = 'ad5210f849d447b94715ff98d4da7419';
-const AMAP_WEATHER_API = 'https://restapi.amap.com/v3/weather/weatherInfo';
-const AMAP_GEO_API = 'https://restapi.amap.com/v3/geocode/regeo';
+// ==================== 配置 ====================
+const API_HOST = 'https://p24up5fjtr.re.qweatherapi.com';
+const API_KEY = getWeatherApiKey();
+const CACHE_TTL = 30 * 60 * 1000;
+const CACHE_KEY = 'weather_cache_v2';
 
-// 缓存有效期（毫秒）
-const CACHE_DURATION = 30 * 60 * 1000; // 30分钟
-
-// 天气现象映射
-const WEATHER_TEXT_MAP: Record<string, string> = {
-  '晴': '晴',
-  '多云': '多云',
-  '阴': '阴天',
-  '小雨': '小雨',
-  '中雨': '中雨',
-  '大雨': '大雨',
-  '暴雨': '暴雨',
-  '雷阵雨': '雷阵雨',
-  '小雪': '小雪',
-  '中雪': '中雪',
-  '大雪': '大雪',
-  '雾': '雾',
-  '霾': '霾',
-  '沙尘暴': '沙尘暴',
-  '阵雨': '阵雨',
-};
-
-interface WeatherCache {
-  timestamp: number;
+// ==================== 类型 ====================
+interface CacheEntry {
+  ts: number;
   lat: number;
   lon: number;
-  data: WeatherDay[];
-  adcode?: string;
-  city?: string;
+  days: WeatherDay[];
+  city: string;
 }
 
-let memoryCache: WeatherCache | null = null;
+let memCache: CacheEntry | null = null;
 
-// 根据经纬度获取城市编码
-async function getAdcode(lat: number, lon: number): Promise<{ adcode: string; city: string }> {
-  try {
-    const url = `${AMAP_GEO_API}?key=${AMAP_KEY}&location=${lon.toFixed(6)},${lat.toFixed(6)}&output=json`;
-    console.log('[Weather] Getting adcode for:', lat, lon);
-    
-    const response = await fetch(url);
-    const data = await response.json();
-    
-    if (data.status === '1' && data.regeocode) {
-      const adcode = data.regeocode.addressComponent?.adcode;
-      const district = data.regeocode.addressComponent?.district || '';
-      const city = data.regeocode.addressComponent?.city || 
-                   data.regeocode.addressComponent?.province || '未知位置';
-      console.log('[Weather] Got adcode:', adcode, 'city:', city);
-      // 优先显示区/县级地名，更具体
-      const locationName = district || city;
-      return { adcode, city: locationName };
-    }
-    
-    throw new Error('Failed to get adcode');
-  } catch (error) {
-    console.error('[Weather] Adcode error:', error);
-    throw error;
-  }
+// ==================== 工具函数 ====================
+
+function localDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-// 查询高德天气（实况 + 预报）
-async function queryAmapWeather(adcode: string): Promise<WeatherDay[]> {
-  try {
-    // 同时请求实况和预报
-    const baseUrl = `${AMAP_WEATHER_API}?key=${AMAP_KEY}&city=${adcode}`;
-    
-    console.log('[Weather] Fetching weather for adcode:', adcode);
-    
-    // 并行请求实况和预报
-    const [liveRes, forecastRes] = await Promise.all([
-      fetch(`${baseUrl}&extensions=base&output=json`),
-      fetch(`${baseUrl}&extensions=all&output=json`)
-    ]);
-    
-    const liveData = await liveRes.json();
-    const forecastData = await forecastRes.json();
-    
-    console.log('[Weather] Live status:', liveData.status, 'Forecast status:', forecastData.status);
-    
-    const days: WeatherDay[] = [];
-    
-    // 解析实况天气
-    if (liveData.status === '1' && liveData.lives?.[0]) {
-      const live = liveData.lives[0];
-      const currentTemp = parseFloat(live.temperature) || 0;
-      const currentHumidity = parseFloat(live.humidity) || 60;
-      const windSpeed = convertWindPowerToSpeed(live.windpower);
-      const month = new Date().getMonth() + 1;
-      
-      console.log('[Weather] Live temp:', currentTemp, 'humidity:', currentHumidity);
-      
-      // 今天数据（实况）
-      days.push({
-        date: new Date().toISOString().split('T')[0],
-        tempMax: currentTemp,
-        tempMin: currentTemp,
-        textDay: live.weather || '未知',
-        iconDay: getWeatherIcon(live.weather || ''),
-        windSpeed,
-        humidity: currentHumidity,
-        precip: 0,
-        waterTemp: estimateWaterTemp(currentTemp, windSpeed, month),
-        currentTemp,
-        currentWaterTemp: estimateWaterTemp(currentTemp, windSpeed, month),
-      });
-    }
-    
-    // 解析预报天气
-    if (forecastData.status === '1' && forecastData.forecasts?.[0]) {
-      const forecast = forecastData.forecasts[0];
-      const month = new Date().getMonth() + 1;
-      
-      // 跳过今天（已有实况），取明后天
-      for (let i = 1; i < forecast.casts.length && days.length < 3; i++) {
-        const cast = forecast.casts[i];
-        const tempMax = parseFloat(cast.daytemp) || 0;
-        const tempMin = parseFloat(cast.nighttemp) || 0;
-        const avgTemp = (tempMax + tempMin) / 2;
-        const windSpeed = convertWindPowerToSpeed(cast.daypower);
-        
-        days.push({
-          date: cast.date,
-          tempMax,
-          tempMin,
-          textDay: cast.dayweather || '未知',
-          iconDay: getWeatherIcon(cast.dayweather || ''),
-          windSpeed,
-          humidity: 60, // 预报不提供湿度
-          precip: 0,
-          waterTemp: estimateWaterTemp(avgTemp, windSpeed, month),
-        });
-      }
-    }
-    
-    return days.length > 0 ? days : getMockWeather();
-  } catch (error) {
-    console.error('[Weather] Query error:', error);
-    return getMockWeather();
-  }
-}
-
-// 风力等级转风速 (km/h)
-function convertWindPowerToSpeed(power: string): number {
-  const level = parseInt(power) || 0;
-  // 大致转换：1级=1km/h, 2级=3km/h, 3级=6km/h...
-  const speeds = [0, 1, 3, 6, 10, 15, 21, 28, 36, 44, 54, 64, 75];
-  return speeds[Math.min(level, 12)] || 0;
-}
-
-function getWeatherIcon(text: string): string {
+function weatherEmoji(text: string): string {
+  if (text.includes('雷')) return '⛈️';
+  if (text.includes('雪')) return '❄️';
+  if (text.includes('雨')) return '🌧️';
+  if (text.includes('雾') || text.includes('霾')) return '🌫️';
+  if (text.includes('沙尘')) return '🌪️';
   if (text.includes('晴')) return '☀️';
   if (text.includes('多云')) return '⛅';
   if (text.includes('阴')) return '☁️';
-  if (text.includes('雨')) return '🌧️';
-  if (text.includes('雪')) return '❄️';
-  if (text.includes('雾') || text.includes('霾')) return '🌫️';
-  if (text.includes('雷')) return '⛈️';
-  if (text.includes('沙尘')) return '🌪️';
   return '🌤️';
 }
 
-export async function getWeather(lat: number, lon: number): Promise<WeatherDay[]> {
-  // 检查内存缓存
-  if (memoryCache && 
-      Math.abs(memoryCache.lat - lat) < 0.01 && 
-      Math.abs(memoryCache.lon - lon) < 0.01 &&
-      Date.now() - memoryCache.timestamp < CACHE_DURATION) {
-    console.log('[Weather] Using memory cache');
-    return memoryCache.data;
+function safeNum(v: unknown, fallback = 0): number {
+  const n = Number(v);
+  return isNaN(n) ? fallback : n;
+}
+
+async function apiFetch(path: string, timeoutMs = 10000): Promise<any> {
+  const url = `${API_HOST}${path}`;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, {
+      signal: ctrl.signal,
+      headers: { 'X-QW-Api-Key': API_KEY },
+    });
+    const json = await res.json();
+    return json;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// ==================== 核心逻辑 ====================
+
+/**
+ * 获取天气数据
+ * 1. 并行请求 /v7/weather/now（实况）和 /v7/weather/3d（3天预报）
+ * 2. 以预报数据为主体，今天的条目叠加实况的当前温度
+ * 3. 并行请求 GeoAPI 获取城市名
+ */
+export async function getWeather(lat: number, lon: number): Promise<{ weather: WeatherDay[]; city: string }> {
+  // --- 缓存检查 ---
+  const cached = checkCache(lat, lon);
+  if (cached) {
+    return { weather: cached.days, city: cached.city };
   }
 
-  // 检查数据库缓存
+  // --- 网络请求 ---
+  const loc = `${lon.toFixed(2)},${lat.toFixed(2)}`;
+
   try {
-    const cachedJson = await getSetting('weather_cache');
-    if (cachedJson) {
-      const cached: WeatherCache = JSON.parse(cachedJson);
-      if (Math.abs(cached.lat - lat) < 0.01 && 
-          Math.abs(cached.lon - lon) < 0.01 &&
-          Date.now() - cached.timestamp < CACHE_DURATION) {
-        console.log('[Weather] Using DB cache');
-        memoryCache = cached;
-        return cached.data;
+    const [nowJson, forecastJson, city] = await Promise.all([
+      apiFetch(`/v7/weather/now?location=${loc}&lang=zh`),
+      apiFetch(`/v7/weather/3d?location=${loc}&lang=zh`),
+      fetchCityName(loc),
+    ]);
+
+    // 校验返回码
+    if (nowJson.code !== '200') throw new Error(`now API error: ${nowJson.code}`);
+    if (forecastJson.code !== '200') throw new Error(`forecast API error: ${forecastJson.code}`);
+
+    // --- 解析实况 ---
+    const now = nowJson.now;
+    const nowTemp = now ? safeNum(now.temp) : 0;
+    const nowHumidity = now ? safeNum(now.humidity, 60) : 60;
+    const nowWind = now ? safeNum(now.windSpeed) : 0;
+    const nowPrecip = now ? safeNum(now.precip) : 0;
+
+    // --- 解析3天预报 ---
+    const todayStr = localDateStr(new Date());
+    const month = new Date().getMonth() + 1;
+    const days: WeatherDay[] = [];
+
+    const forecastList = forecastJson.daily || [];
+
+    for (const fc of forecastList) {
+      const dateStr: string = fc.fxDate;
+      const maxT = safeNum(fc.tempMax);
+      const minT = safeNum(fc.tempMin);
+      const avgT = (maxT + minT) / 2;
+      const fcWind = safeNum(fc.windSpeedDay);
+      const fcHumidity = safeNum(fc.humidity, 60);
+      const fcPrecip = safeNum(fc.precip);
+      const isToday = dateStr === todayStr;
+
+      const day: WeatherDay = {
+        date: dateStr,
+        tempMax: maxT,         // ← 来自预报，不是当前温度
+        tempMin: minT,         // ← 来自预报，不是当前温度
+        textDay: fc.textDay || '未知',
+        iconDay: weatherEmoji(fc.textDay || ''),
+        windSpeed: isToday ? nowWind : fcWind,
+        humidity: isToday ? nowHumidity : fcHumidity,
+        precip: isToday ? nowPrecip : fcPrecip,
+        waterTemp: estimateWaterTemp(avgT, fcWind, month),
+      };
+
+      // 今天额外叠加实况
+      if (isToday && now) {
+        day.currentTemp = nowTemp;
+        day.currentWaterTemp = estimateWaterTemp(nowTemp, nowWind, month);
+      }
+
+      days.push(day);
+    }
+
+    if (days.length === 0) {
+      return { weather: mockWeather(), city };
+    }
+
+    // --- 写缓存 ---
+    const entry: CacheEntry = { ts: Date.now(), lat, lon, days, city };
+    memCache = entry;
+    setSetting(CACHE_KEY, JSON.stringify(entry)).catch(() => {});
+    return { weather: days, city };
+  } catch (err) {
+    return { weather: mockWeather(), city: '未知位置' };
+  }
+}
+
+// ==================== 城市名 ====================
+
+async function fetchCityName(loc: string): Promise<string> {
+  try {
+    const json = await apiFetch(`/geo/v2/city/lookup?location=${loc}&lang=zh&number=1`);
+    if (json.code === '200' && json.location?.[0]) {
+      const name = json.location[0].adm2 || json.location[0].name || '未知位置';
+      return name;
+    }
+  } catch (e) {
+    // 城市名查询失败，返回默认值
+  }
+  return '未知位置';
+}
+
+export async function getCityName(lat: number, lon: number): Promise<string> {
+  if (memCache?.city) return memCache.city;
+  return fetchCityName(`${lon.toFixed(2)},${lat.toFixed(2)}`);
+}
+
+// ==================== 缓存 ====================
+
+function checkCache(lat: number, lon: number): CacheEntry | null {
+  // 内存缓存
+  if (memCache && Math.abs(memCache.lat - lat) < 0.01 && Math.abs(memCache.lon - lon) < 0.01 && Date.now() - memCache.ts < CACHE_TTL) {
+    return memCache;
+  }
+  // DB 缓存（同步返回 null，异步填充由下次调用命中）
+  return null;
+}
+
+// 启动时预热 DB 缓存
+(async () => {
+  try {
+    const raw = await getSetting(CACHE_KEY);
+    if (raw) {
+      const parsed: CacheEntry = JSON.parse(raw);
+      if (Date.now() - parsed.ts < CACHE_TTL) {
+        memCache = parsed;
       }
     }
   } catch (e) {
-    console.warn('[Weather] Cache read error:', e);
+    // DB cache warmup failure is non-critical; will retry on next fetch
   }
+})();
 
-  try {
-    // 先获取城市编码
-    const { adcode, city } = await getAdcode(lat, lon);
-    
-    // 查询天气
-    const weatherDays = await queryAmapWeather(adcode);
-    
-    // 缓存结果
-    const cacheObj: WeatherCache = {
-      timestamp: Date.now(),
-      lat,
-      lon,
-      data: weatherDays,
-      adcode,
-      city,
-    };
-    memoryCache = cacheObj;
-    try {
-      await setSetting('weather_cache', JSON.stringify(cacheObj));
-    } catch (e) {
-      console.warn('[Weather] Cache save error:', e);
-    }
-    
-    console.log('[Weather] Data fetched successfully');
-    return weatherDays;
-  } catch (error) {
-    console.error('[Weather] Fetch error:', error);
-    return getMockWeather();
-  }
-}
+// ==================== Mock 数据 ====================
 
-// 导出获取城市名称的函数
-export async function getCityName(lat: number, lon: number): Promise<string> {
-  try {
-    if (memoryCache?.city) return memoryCache.city;
-    const { city } = await getAdcode(lat, lon);
-    return city;
-  } catch {
-    return '未知位置';
-  }
-}
-
-function getMockWeather(): WeatherDay[] {
-  const today = new Date();
-  const month = today.getMonth() + 1;
-
-  const mockDays = [
-    { tempMax: 25, tempMin: 18, textDay: '多云', windSpeed: 10, humidity: 65, precip: 0, currentTemp: 22 },
-    { tempMax: 27, tempMin: 19, textDay: '晴', windSpeed: 8, humidity: 55, precip: 0 },
-    { tempMax: 23, tempMin: 17, textDay: '小雨', windSpeed: 15, humidity: 80, precip: 5 },
+function mockWeather(): WeatherDay[] {
+  const now = new Date();
+  const month = now.getMonth() + 1;
+  const mocks = [
+    { max: 25, min: 18, text: '多云', wind: 10, hum: 65, cur: 22 },
+    { max: 27, min: 19, text: '晴', wind: 8, hum: 55 },
+    { max: 23, min: 17, text: '小雨', wind: 15, hum: 80, precip: 5 },
   ];
-
-  return mockDays.map((mock, index) => {
-    const date = new Date(today);
-    date.setDate(date.getDate() + index);
-    const avgTemp = (mock.tempMax + mock.tempMin) / 2;
-
+  return mocks.map((m, i) => {
+    const d = new Date(now);
+    d.setDate(d.getDate() + i);
+    const avg = (m.max + m.min) / 2;
     const day: WeatherDay = {
-      date: date.toISOString().split('T')[0],
-      tempMax: mock.tempMax,
-      tempMin: mock.tempMin,
-      textDay: mock.textDay,
-      iconDay: getWeatherIcon(mock.textDay),
-      windSpeed: mock.windSpeed,
-      humidity: mock.humidity,
-      precip: mock.precip,
-      waterTemp: estimateWaterTemp(avgTemp, mock.windSpeed, month),
+      date: localDateStr(d),
+      tempMax: m.max,
+      tempMin: m.min,
+      textDay: m.text,
+      iconDay: weatherEmoji(m.text),
+      windSpeed: m.wind,
+      humidity: m.hum,
+      precip: m.precip ?? 0,
+      waterTemp: estimateWaterTemp(avg, m.wind, month),
     };
-
-    if (index === 0 && mock.currentTemp) {
-      day.currentTemp = mock.currentTemp;
-      day.currentWaterTemp = estimateWaterTemp(mock.currentTemp, mock.windSpeed, month);
+    if (i === 0 && m.cur) {
+      day.currentTemp = m.cur;
+      day.currentWaterTemp = estimateWaterTemp(m.cur, m.wind, month);
     }
-
     return day;
   });
 }
 
+// ==================== 导出 ====================
+
 export function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
   const today = new Date();
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
 
-  if (dateStr === today.toISOString().split('T')[0]) return '今天';
-  if (dateStr === tomorrow.toISOString().split('T')[0]) return '明天';
+  if (dateStr === localDateStr(today)) return '今天';
+  if (dateStr === localDateStr(tomorrow)) return '明天';
 
-  return `${date.getMonth() + 1}月${date.getDate()}日`;
+  const [, m, d] = dateStr.split('-');
+  return `${parseInt(m)}月${parseInt(d)}日`;
 }

@@ -27,7 +27,6 @@ export async function shareView(viewRef: RefObject<View>): Promise<boolean> {
 
     return true;
   } catch (error) {
-    console.error('Share error:', error);
     return false;
   }
 }

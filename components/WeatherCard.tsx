@@ -2,6 +2,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { WeatherDay } from '../services/types';
 import { formatDate } from '../services/weather';
 import { getWaterTempRating } from '../utils/water-temp';
+import { useUnits } from '../hooks/useUnits';
 
 interface WeatherCardProps {
   day: WeatherDay;
@@ -23,6 +24,7 @@ const RATING_LABELS = {
 };
 
 export function WeatherCard({ day, isToday }: WeatherCardProps) {
+  const { formatTemp } = useUnits();
   const rating = getWaterTempRating(day.waterTemp);
 
   return (
@@ -37,25 +39,25 @@ export function WeatherCard({ day, isToday }: WeatherCardProps) {
       <Text style={styles.weatherText}>{day.textDay}</Text>
 
       <View style={styles.tempRow}>
-        <Text style={styles.tempHigh}>{day.tempMax}°</Text>
-        <Text style={styles.tempLow}>{day.tempMin}°</Text>
+        <Text style={styles.tempHigh}>{formatTemp(day.tempMax)}</Text>
+        <Text style={styles.tempLow}>{formatTemp(day.tempMin)}</Text>
       </View>
 
       {isToday && day.currentTemp !== undefined ? (
         <View style={styles.currentRow}>
           <View style={styles.currentItem}>
             <Text style={styles.currentLabel}>当前温度</Text>
-            <Text style={styles.currentValue}>{day.currentTemp}°C</Text>
+            <Text style={styles.currentValue}>{formatTemp(day.currentTemp)}</Text>
           </View>
           <View style={styles.currentItem}>
             <Text style={styles.currentLabel}>当前水温</Text>
-            <Text style={styles.currentValue}>{day.currentWaterTemp}°C</Text>
+            <Text style={styles.currentValue}>{formatTemp(day.currentWaterTemp)}</Text>
           </View>
         </View>
       ) : null}
       <View style={styles.waterTempRow}>
         <Text style={styles.waterTempLabel}>{isToday ? '日均水温' : '预估水温'}</Text>
-        <Text style={styles.waterTempValue}>{day.waterTemp}°C</Text>
+        <Text style={styles.waterTempValue}>{formatTemp(day.waterTemp)}</Text>
       </View>
 
       <View style={[styles.ratingBadge, { backgroundColor: RATING_COLORS[rating] }]}>

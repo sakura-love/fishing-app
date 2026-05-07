@@ -73,7 +73,7 @@ export default function NewCatchScreen() {
     setSaving(true);
     try {
       await addRecord({
-        id: Date.now().toString(),
+        id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
         fishSpeciesId: selectedFish.id,
         fishName: selectedFish.name,
         photoUri: photoUri || undefined,

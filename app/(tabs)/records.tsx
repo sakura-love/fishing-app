@@ -3,6 +3,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
 import { useCatches } from '../../hooks/useCatches';
 import { getFishById } from '../../data/fish-encyclopedia';
+import { useUnits } from '../../hooks/useUnits';
 
 const FISH_EMOJIS: Record<string, string> = {
   '鲤科': '🐟',
@@ -17,11 +18,12 @@ const FISH_EMOJIS: Record<string, string> = {
 export default function RecordsScreen() {
   const router = useRouter();
   const { records, loading, loadRecords } = useCatches();
+  const { formatLength, formatWeight } = useUnits();
 
   useFocusEffect(
     useCallback(() => {
       loadRecords();
-    }, [])
+    }, [loadRecords])
   );
 
   const getFishEmoji = (fishId: string): string => {
@@ -69,10 +71,10 @@ export default function RecordsScreen() {
               </View>
               <View style={styles.recordStats}>
                 {item.length && (
-                  <Text style={styles.recordSize}>{item.length}cm</Text>
+                  <Text style={styles.recordSize}>{formatLength(item.length)}</Text>
                 )}
                 {item.weight && (
-                  <Text style={styles.recordWeight}>{item.weight}kg</Text>
+                  <Text style={styles.recordWeight}>{formatWeight(item.weight)}</Text>
                 )}
               </View>
             </TouchableOpacity>

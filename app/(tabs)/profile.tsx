@@ -10,7 +10,7 @@ export default function ProfileScreen() {
   useFocusEffect(
     useCallback(() => {
       loadRecords();
-    }, [])
+    }, [loadRecords])
   );
 
   return (

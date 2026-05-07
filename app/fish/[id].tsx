@@ -1,7 +1,8 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { getFishById, FishSpecies } from '../../data/fish-encyclopedia';
+import { getFishById } from '../../data/fish-encyclopedia';
 import { useCatches } from '../../hooks/useCatches';
+import { useUnits } from '../../hooks/useUnits';
 
 const CATEGORY_LABELS: Record<string, string> = {
   freshwater: '淡水鱼',
@@ -13,7 +14,9 @@ export default function FishDetailScreen() {
   const router = useRouter();
   const { fishCounts } = useCatches();
 
+  const { lengthUnit, tempUnit } = useUnits();
   const fish = getFishById(id || '');
+
   if (!fish) {
     return (
       <View style={styles.container}>
@@ -46,11 +49,11 @@ export default function FishDetailScreen() {
         </View>
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>常见体型</Text>
-          <Text style={styles.infoValue}>{fish.avgSize.min}-{fish.avgSize.max} cm</Text>
+          <Text style={styles.infoValue}>{fish.avgSize.min}-{fish.avgSize.max} {lengthUnit}</Text>
         </View>
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>适宜水温</Text>
-          <Text style={styles.infoValue}>{fish.optimalTemp.min}-{fish.optimalTemp.max} °C</Text>
+          <Text style={styles.infoValue}>{fish.optimalTemp.min}-{fish.optimalTemp.max} {tempUnit}</Text>
         </View>
       </View>
 
@@ -66,7 +69,7 @@ export default function FishDetailScreen() {
 
       <TouchableOpacity
         style={styles.recordBtn}
-        onPress={() => router.push('/catch/new')}
+        onPress={() => router.push({ pathname: '/catch/new', params: { fishId: fish.id, fishName: fish.name } })}
       >
         <Text style={styles.recordBtnText}>记录钓获</Text>
       </TouchableOpacity>

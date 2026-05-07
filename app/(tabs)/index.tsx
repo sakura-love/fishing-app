@@ -5,16 +5,18 @@ import { useWeather } from '../../hooks/useWeather';
 import { useCatches } from '../../hooks/useCatches';
 import { WeatherCard } from '../../components/WeatherCard';
 import { getFishForWaterTemp, fishEncyclopedia } from '../../data/fish-encyclopedia';
+import { useUnits } from '../../hooks/useUnits';
 
 export default function HomeScreen() {
   const router = useRouter();
   const { weather, loading: weatherLoading, locationName, refresh } = useWeather();
+  const { formatTemp } = useUnits();
   const { loadRecords } = useCatches();
 
   useFocusEffect(
     useCallback(() => {
       loadRecords();
-    }, [])
+    }, [loadRecords])
   );
 
   const todayWeather = weather[0];
@@ -66,7 +68,7 @@ export default function HomeScreen() {
             >
               <Text style={styles.fishChipName}>{fish.name}</Text>
               <Text style={styles.fishChipTemp}>
-                {fish.optimalTemp.min}-{fish.optimalTemp.max}°C
+                {formatTemp(fish.optimalTemp.min)}-{formatTemp(fish.optimalTemp.max)}
               </Text>
             </TouchableOpacity>
           ))}
@@ -133,29 +135,7 @@ const styles = StyleSheet.create({
     padding: 40,
     alignItems: 'center',
   },
-  loadingText: { fontSize: 14, color: '#95a5a6', marginTop: 12 },
-  adviceSection: { paddingHorizontal: 16 },
-  adviceCard: {
-    backgroundColor: '#eaf2f8',
-    borderRadius: 12,
-    padding: 16,
-    borderLeftWidth: 4,
-    borderLeftColor: '#1a5276',
-  },
-  adviceTitle: { fontSize: 16, fontWeight: '600', color: '#1a5276' },
-  adviceText: { fontSize: 14, color: '#2c3e50', marginTop: 8, lineHeight: 22 },
-  adviceTempRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#d4e6f1',
-  },
-  adviceTempLabel: { fontSize: 13, color: '#5d6d7e' },
-  adviceTempValue: { fontSize: 18, fontWeight: 'bold', color: '#1a5276' },
-  fishGrid: {
+  loadingText: { fontSize: 14, color: '#95a5a6', marginTop: 12 },  fishGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,

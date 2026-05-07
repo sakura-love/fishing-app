@@ -135,7 +135,6 @@ export async function getSetting(key: string): Promise<string | null> {
     );
     return row?.value ?? null;
   } catch (error) {
-    console.error(`getSetting(${key}) error:`, error);
     return null;
   }
 }
@@ -151,7 +150,6 @@ export async function setSetting(key: string, value: string): Promise<boolean> {
     const verify = await getSetting(key);
     return verify === value;
   } catch (error) {
-    console.error(`setSetting(${key}) error:`, error);
     return false;
   }
 }
@@ -168,7 +166,6 @@ export async function getAllSettings(): Promise<Record<string, string>> {
     }
     return settings;
   } catch (error) {
-    console.error('getAllSettings error:', error);
     return {};
   }
 }

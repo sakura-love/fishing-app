@@ -35,7 +35,6 @@ export const useCatches = create<CatchStore>((set, get) => ({
       ]);
       set({ records, fishCounts, stats, loading: false });
     } catch (error) {
-      console.error('Failed to load records:', error);
       set({ loading: false });
     }
   },
