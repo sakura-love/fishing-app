@@ -215,6 +215,26 @@ fishing-app/
 
 ---
 
+## 📋 更新日志
+
+### v1.7.1（最新）
+- 修复 GPS 定位问题：强制使用 GPS 定位，避免 WiFi 环境下定位卡住或超时
+- 提升定位精度：从 ~3 公里（市级）提升到 ~100 米（区/县级）
+- 简化定位流程，移除不稳定的 `getCurrentPositionAsync`
+
+### v1.2.0
+- 新增单位偏好设置：cm/inch、kg/lb、°C/°F 自由切换
+- 新增全局 ErrorBoundary，渲染异常不再白屏崩溃
+- 修复鱼种详情页「记录钓获」不自动填入鱼种的问题
+- 修复记录 ID 冲突、useCallback 依赖等多项问题
+
+### v1.0.0
+- 首次发布：天气与水温、鱼种图鉴、钓获记录、AI 识别
+
+> 详细更新内容请查看各版本 [RELEASE_NOTES](RELEASE_NOTES_v1.7.1.md)
+
+---
+
 ## 🤝 贡献
 
 欢迎提交 Issue 和 Pull Request！
