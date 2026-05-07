@@ -46,7 +46,7 @@ export default function RecordsScreen() {
               onPress={() => router.push(`/catch/${item.id}`)}
             >
               <View style={styles.recordPreview}>
-                <Image source={getFishImageSource(item.fishSpeciesId)} style={styles.recordImage} resizeMode="cover" />
+                <Image source={getFishImageSource(item.fishSpeciesId)} style={styles.recordImage} resizeMode="contain" />
               </View>
               <View style={styles.recordInfo}>
                 <Text style={styles.recordName}>{item.fishName}</Text>

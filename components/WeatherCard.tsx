@@ -43,7 +43,7 @@ export function WeatherCard({ day, isToday }: WeatherCardProps) {
         <Text style={styles.tempLow}>{formatTemp(day.tempMin)}</Text>
       </View>
 
-      {isToday && day.currentTemp !== undefined ? (
+      {isToday && day.currentTemp !== undefined && day.currentWaterTemp !== undefined ? (
         <View style={styles.currentRow}>
           <View style={styles.currentItem}>
             <Text style={styles.currentLabel}>当前温度</Text>

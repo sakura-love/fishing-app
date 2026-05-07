@@ -13,7 +13,7 @@ export default function CatchDetailScreen() {
   const { records, deleteRecord, stats } = useCatches();
   const [record, setRecord] = useState<CatchRecord | null>(null);
   const { formatLength, formatWeight, lengthUnit, weightUnit } = useUnits();
-  const shareCardRef = useRef<View>(null);
+  const shareCardRef = useRef<View | null>(null);
 
   useEffect(() => {
     const found = records.find((r) => r.id === id);
@@ -73,15 +73,15 @@ export default function CatchDetailScreen() {
         <Text style={styles.date}>{formatDate(record.caughtAt)}</Text>
 
         <View style={styles.statsRow}>
-          {record.length && (
+          {record.length !== undefined && (
             <View style={styles.stat}>
-              <Text style={styles.statValue}>{record.length ? formatLength(record.length) : "-"}</Text>
+              <Text style={styles.statValue}>{formatLength(record.length)}</Text>
               <Text style={styles.statLabel}>长度({lengthUnit})</Text>
             </View>
           )}
-          {record.weight && (
+          {record.weight !== undefined && (
             <View style={styles.stat}>
-              <Text style={styles.statValue}>{record.weight ? formatWeight(record.weight) : "-"}</Text>
+              <Text style={styles.statValue}>{formatWeight(record.weight)}</Text>
               <Text style={styles.statLabel}>重量({weightUnit})</Text>
             </View>
           )}

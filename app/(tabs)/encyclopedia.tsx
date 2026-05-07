@@ -89,7 +89,7 @@ export default function EncyclopediaScreen() {
               onPress={() => router.push(`/fish/${item.id}`)}
             >
               <View style={styles.fishIcon}>
-                <Image source={getFishImageSource(item.id)} style={styles.fishImage} resizeMode="cover" />
+                <Image source={getFishImageSource(item.id)} style={styles.fishImage} resizeMode="contain" />
               </View>
               <View style={styles.fishInfo}>
                 <Text style={styles.fishName}>{item.name}</Text>

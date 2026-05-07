@@ -10,7 +10,7 @@ import { getFishImageSource } from '../../data/fish-images';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { weather, loading: weatherLoading, locationName, refresh } = useWeather();
+  const { weather, loading: weatherLoading, error: weatherError, locationName, refresh } = useWeather();
   const { formatTemp } = useUnits();
   const { loadRecords } = useCatches();
 
@@ -47,6 +47,13 @@ export default function HomeScreen() {
             <ActivityIndicator size="large" color="#1a5276" />
             <Text style={styles.loadingText}>获取天气中...</Text>
           </View>
+        ) : weatherError ? (
+          <View style={styles.loadingBox}>
+            <Text style={styles.errorText}>{weatherError}</Text>
+            <TouchableOpacity onPress={refresh} style={styles.retryBtn}>
+              <Text style={styles.retryBtnText}>点击重试</Text>
+            </TouchableOpacity>
+          </View>
         ) : (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.weatherScroll}>
             {weather.map((day, index) => (
@@ -67,7 +74,7 @@ export default function HomeScreen() {
               style={styles.fishChip}
               onPress={() => router.push(`/fish/${fish.id}`)}
             >
-              <Image source={getFishImageSource(fish.id)} style={styles.fishChipImage} resizeMode="cover" />
+              <Image source={getFishImageSource(fish.id)} style={styles.fishChipImage} resizeMode="contain" />
               <Text style={styles.fishChipName}>{fish.name}</Text>
               <Text style={styles.fishChipTemp}>
                 {formatTemp(fish.optimalTemp.min)}-{formatTemp(fish.optimalTemp.max)}
@@ -137,7 +144,11 @@ const styles = StyleSheet.create({
     padding: 40,
     alignItems: 'center',
   },
-  loadingText: { fontSize: 14, color: '#95a5a6', marginTop: 12 },  fishGrid: {
+  loadingText: { fontSize: 14, color: '#95a5a6', marginTop: 12 },
+  errorText: { fontSize: 14, color: '#e74c3c', textAlign: 'center' },
+  retryBtn: { marginTop: 12, backgroundColor: '#1a5276', paddingHorizontal: 20, paddingVertical: 8, borderRadius: 8 },
+  retryBtnText: { fontSize: 14, color: '#fff' },
+  fishGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,

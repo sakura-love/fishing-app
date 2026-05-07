@@ -92,7 +92,7 @@ export const fishEncyclopedia: FishSpecies[] = [
   {
     id: 'topmouth-gudgeon',
     name: '白条',
-    scientificName: 'Topmouth gudgeon',
+    scientificName: 'Pseudorasbora parva',
     category: 'freshwater',
     family: '鲤科',
     description: '小型淡水鱼，数量多，常成群活动。虽然小但拉力十足，是练习手感的好鱼种。',

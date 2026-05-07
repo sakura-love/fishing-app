@@ -31,7 +31,7 @@ export default function FishDetailScreen() {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <Image source={getFishImageSource(fish.id)} style={styles.fishImage} resizeMode="cover" />
+        <Image source={getFishImageSource(fish.id)} style={styles.fishImage} resizeMode="contain" />
         <Text style={styles.fishName}>{fish.name}</Text>
         <Text style={styles.scientificName}>{fish.scientificName}</Text>
         {caughtCount > 0 && (
