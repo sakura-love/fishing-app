@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🎣 钓鱼人宝典
+# <img src="assets/icon.png" width="32" height="32" alt="icon"> 钓鱼人宝典
 
 **你的智能钓鱼助手**
 
