@@ -1,9 +1,10 @@
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Image } from 'react-native';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { fishEncyclopedia, FishSpecies, searchFish } from '../../data/fish-encyclopedia';
+import { fishEncyclopedia, FishSpecies } from '../../data/fish-encyclopedia';
 import { useCatches } from '../../hooks/useCatches';
 import { useUnits } from '../../hooks/useUnits';
+import { useCustomFish } from '../../hooks/useCustomFish';
 import { getFishImageSource } from '../../data/fish-images';
 
 const CATEGORIES = [
@@ -20,25 +21,37 @@ export default function EncyclopediaScreen() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const { fishCounts, loadRecords } = useCatches();
   const { formatTemp } = useUnits();
+  const { customFish, loadCustomFish } = useCustomFish();
 
   useFocusEffect(
     useCallback(() => {
       loadRecords();
-    }, [loadRecords])
+      loadCustomFish();
+    }, [loadRecords, loadCustomFish])
   );
 
-  const getFilteredFish = (): FishSpecies[] => {
-    let result = search ? searchFish(search) : fishEncyclopedia;
-
-    if (selectedCategory === 'freshwater') {
-      result = result.filter((f) => f.category === 'freshwater');
-    } else if (selectedCategory === 'saltwater') {
-      result = result.filter((f) => f.category === 'saltwater');
-    } else if (selectedCategory !== 'all') {
-      result = result.filter((f) => f.family.includes(selectedCategory));
+  const getFilteredFish = (): (FishSpecies & { photoUri?: string })[] => {
+    let allFish: (FishSpecies & { photoUri?: string })[] = [...fishEncyclopedia, ...customFish];
+    
+    if (search) {
+      const q = search.toLowerCase();
+      allFish = allFish.filter(
+        (fish) =>
+          fish.name.toLowerCase().includes(q) ||
+          fish.scientificName.toLowerCase().includes(q) ||
+          fish.family.toLowerCase().includes(q)
+      );
     }
 
-    return result;
+    if (selectedCategory === 'freshwater') {
+      allFish = allFish.filter((f) => f.category === 'freshwater');
+    } else if (selectedCategory === 'saltwater') {
+      allFish = allFish.filter((f) => f.category === 'saltwater');
+    } else if (selectedCategory !== 'all') {
+      allFish = allFish.filter((f) => f.family.includes(selectedCategory));
+    }
+
+    return allFish;
   };
 
   const filteredFish = getFilteredFish();
@@ -47,15 +60,30 @@ export default function EncyclopediaScreen() {
     return fishCounts[fishId] || 0;
   };
 
+  const getFishImage = (item: FishSpecies & { photoUri?: string }) => {
+    if (item.photoUri) {
+      return { uri: item.photoUri };
+    }
+    return getFishImageSource(item.id);
+  };
+
   return (
     <View style={styles.container}>
-      <TextInput
-        style={styles.searchInput}
-        placeholder="搜索鱼种..."
-        value={search}
-        onChangeText={setSearch}
-        placeholderTextColor="#999"
-      />
+      <View style={styles.header}>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="搜索鱼种..."
+          value={search}
+          onChangeText={setSearch}
+          placeholderTextColor="#999"
+        />
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={() => router.push('/fish/add')}
+        >
+          <Text style={styles.addButtonText}>+</Text>
+        </TouchableOpacity>
+      </View>
 
       <View style={styles.categories}>
         {CATEGORIES.map((cat) => (
@@ -72,7 +100,7 @@ export default function EncyclopediaScreen() {
       </View>
 
       <View style={styles.countBar}>
-        <Text style={styles.countText}>共 {fishEncyclopedia.length} 种鱼</Text>
+        <Text style={styles.countText}>共 {fishEncyclopedia.length + customFish.length} 种鱼</Text>
         <Text style={styles.countText}>
           已钓获 {Object.keys(fishCounts).length} 种
         </Text>
@@ -83,22 +111,31 @@ export default function EncyclopediaScreen() {
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => {
           const caught = getCaughtCount(item.id);
+          const imageSource = getFishImage(item);
           return (
             <TouchableOpacity
               style={styles.fishCard}
               onPress={() => router.push(`/fish/${item.id}`)}
             >
               <View style={styles.fishIcon}>
-                <Image source={getFishImageSource(item.id)} style={styles.fishImage} resizeMode="contain" />
+                {imageSource ? (
+                  <Image source={imageSource} style={styles.fishImage} resizeMode="contain" />
+                ) : (
+                  <View style={styles.fishPlaceholder}>
+                    <Text style={styles.fishPlaceholderText}>🐟</Text>
+                  </View>
+                )}
               </View>
               <View style={styles.fishInfo}>
                 <Text style={styles.fishName}>{item.name}</Text>
                 <Text style={styles.fishFamily}>
-                  {item.family} · {item.category === 'freshwater' ? '淡水' : '海水'}
+                  {item.family || '未知科属'} · {item.category === 'freshwater' ? '淡水' : '海水'}
                 </Text>
-                <Text style={styles.fishTemp}>
-                  适宜水温 {formatTemp(item.optimalTemp.min)}-{formatTemp(item.optimalTemp.max)}
-                </Text>
+                {item.optimalTemp && (
+                  <Text style={styles.fishTemp}>
+                    适宜水温 {formatTemp(item.optimalTemp.min)}-{formatTemp(item.optimalTemp.max)}
+                  </Text>
+                )}
               </View>
               <View style={[styles.caughtBadge, caught > 0 && styles.caughtBadgeActive]}>
                 <Text style={[styles.caughtText, caught > 0 && styles.caughtTextActive]}>
@@ -121,9 +158,15 @@ export default function EncyclopediaScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f8fa' },
-  searchInput: {
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
     margin: 16,
     marginBottom: 8,
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
     backgroundColor: '#fff',
     borderRadius: 10,
     padding: 12,
@@ -133,6 +176,25 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
+  },
+  addButton: {
+    backgroundColor: '#1a5276',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  addButtonText: {
+    color: '#fff',
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginTop: -2,
   },
   categories: {
     flexDirection: 'row',
@@ -178,6 +240,15 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   fishImage: { width: 48, height: 48, borderRadius: 12 },
+  fishPlaceholder: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#ecf0f1',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fishPlaceholderText: { fontSize: 24 },
   fishInfo: { flex: 1, marginLeft: 12 },
   fishName: { fontSize: 17, fontWeight: '600', color: '#2c3e50' },
   fishFamily: { fontSize: 13, color: '#95a5a6', marginTop: 2 },

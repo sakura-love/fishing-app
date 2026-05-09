@@ -5,6 +5,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { identifyFish } from '../services/fish-recognition';
 import { IdentifyResult } from '../services/types';
 import { getSetting } from '../services/storage';
+import { fishEncyclopedia } from '../data/fish-encyclopedia';
+import { useCustomFish } from '../hooks/useCustomFish';
 
 type IdentifyState = 'idle' | 'loading' | 'result';
 
@@ -14,9 +16,12 @@ export default function IdentifyScreen() {
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [result, setResult] = useState<IdentifyResult | null>(null);
   const [hasApiKey, setHasApiKey] = useState<boolean | null>(null);
+  const [isInEncyclopedia, setIsInEncyclopedia] = useState<boolean>(true);
+  const { customFish, loadCustomFish } = useCustomFish();
 
   useEffect(() => {
     checkApiKey();
+    loadCustomFish();
   }, []);
 
   const checkApiKey = async () => {
@@ -92,6 +97,12 @@ export default function IdentifyScreen() {
     try {
       const identifyResult = await identifyFish(uri);
       setResult(identifyResult);
+      
+      // 检查是否在图鉴中
+      const allFishIds = [...fishEncyclopedia.map(f => f.id), ...customFish.map(f => f.id)];
+      const inEncyclopedia = allFishIds.includes(identifyResult.speciesId);
+      setIsInEncyclopedia(inEncyclopedia);
+      
       setState('result');
     } catch (error) {
       Alert.alert('识别失败', '无法识别该图片，请重试');
@@ -112,10 +123,24 @@ export default function IdentifyScreen() {
     }
   };
 
+  const handleAddToEncyclopedia = () => {
+    if (result && photoUri) {
+      router.push({
+        pathname: '/fish/add',
+        params: {
+          name: result.name,
+          photoUri: photoUri,
+          description: result.description,
+        },
+      });
+    }
+  };
+
   const handleRetry = () => {
     setState('idle');
     setResult(null);
     setPhotoUri(null);
+    setIsInEncyclopedia(true);
     checkApiKey();
   };
 
@@ -189,12 +214,26 @@ export default function IdentifyScreen() {
             </View>
             <Text style={styles.confidenceText}>置信度 {result.confidence}%</Text>
             <Text style={styles.resultDesc}>{result.description}</Text>
+            
+            {!isInEncyclopedia && (
+              <View style={styles.newFishNotice}>
+                <Text style={styles.newFishNoticeIcon}>✨</Text>
+                <Text style={styles.newFishNoticeText}>这是新发现的鱼种！</Text>
+              </View>
+            )}
           </View>
 
           <View style={styles.resultActions}>
             <TouchableOpacity style={styles.confirmBtn} onPress={handleConfirm}>
               <Text style={styles.confirmBtnText}>确认并记录钓获</Text>
             </TouchableOpacity>
+            
+            {!isInEncyclopedia && (
+              <TouchableOpacity style={styles.addToEncyclopediaBtn} onPress={handleAddToEncyclopedia}>
+                <Text style={styles.addToEncyclopediaBtnText}>➕ 添加到我的图鉴</Text>
+              </TouchableOpacity>
+            )}
+            
             <TouchableOpacity style={styles.retryBtn} onPress={handleRetry}>
               <Text style={styles.retryBtnText}>重新拍照</Text>
             </TouchableOpacity>
@@ -304,6 +343,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   confirmBtnText: { color: '#fff', fontSize: 17, fontWeight: '600' },
+  addToEncyclopediaBtn: {
+    backgroundColor: '#27ae60',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  addToEncyclopediaBtnText: { color: '#fff', fontSize: 17, fontWeight: '600' },
+  newFishNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fef9e7',
+    borderRadius: 8,
+    padding: 10,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: '#f9e79f',
+  },
+  newFishNoticeIcon: { fontSize: 18, marginRight: 6 },
+  newFishNoticeText: { fontSize: 14, color: '#7d6608', fontWeight: '600' },
   retryBtn: { marginTop: 12, padding: 12, alignItems: 'center' },
   retryBtnText: { color: '#1a5276', fontSize: 16 },
 });
