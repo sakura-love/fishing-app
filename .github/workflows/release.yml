@@ -1,0 +1,63 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup Expo
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Extract version
+        id: version
+        run: |
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION#v}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Build APK (EAS)
+        run: |
+          eas build --platform android --profile preview --non-interactive --no-wait
+          # 下载最新 build
+          eas build:list --platform android --status FINISHED --limit 1 --json > build-info.json
+          BUILD_URL=$(node -e "console.log(require('./build-info.json')[0].artifacts.buildUrl)")
+          curl -L -o dist/fishing-app-v${{ steps.version.outputs.version }}.apk "$BUILD_URL"
+
+      - name: Generate changelog
+        run: |
+          CURRENT="${{ github.ref_name }}"
+          PREV=$(git describe --tags --abbrev=0 "$CURRENT^" 2>/dev/null || echo "")
+          if [ -n "$PREV" ]; then
+            git log "$PREV..$CURRENT" --pretty=format:"- %s (%h)" --no-merges > cl.txt
+          else
+            git log --pretty=format:"- %s (%h)" --no-merges > cl.txt
+          fi
+          echo "## $CURRENT" | cat - cl.txt > CHANGELOG_TEMP.md
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: "钓鱼人宝典 ${{ github.ref_name }}"
+          body_path: CHANGELOG_TEMP.md
+          files: dist/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
